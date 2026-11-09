@@ -5,6 +5,7 @@
 import { promises as fs } from 'node:fs';
 import { existsSync, statSync, renameSync } from 'node:fs';
 import { synthesize as ttsLocal, catalog as ttsCatalog, available as ttsAvailable } from './tts.mjs';
+import { collapseStutter } from './stutter.mjs';
 import {
   checkWhisperUpdates, applyFasterWhisperUpdate, applyModelUpdate,
   resolveModelRepo, hfCacheDir,
@@ -201,9 +202,9 @@ async function correctViaDsh(text) {
     model: CORRECT_DSH_MODEL,
     system: CORRECT_SYS,
     temperature: 0,
-    maxTokens: 400,
+    maxTokens: 1500,
     messages: [{ role: 'user', content: [{ type: 'text', text }] }],
-    signal: AbortSignal.timeout(8000),
+    signal: AbortSignal.timeout(15000),
   });
   for await (const ch of stream) {
     if (ch && ch.type === 'text-delta') out += ch.text;
@@ -644,6 +645,8 @@ export function apply(ctx) {
           text = String(t.text || '');
           engine = 'dsh';
         }
+        // 先本地折掉口吃（来来来来 / 语语语），再走幻觉与去重判断
+        text = collapseStutter(text);
         const spoken = dominantLang(text);
         if (looksHallucinated(text)) {
           log('stt-hallucination', JSON.stringify(String(text).slice(0, 24)));
@@ -678,7 +681,7 @@ export function apply(ctx) {
       if (req.method !== 'POST') return json(res, 405, { error: 'POST only' });
       try {
         const b = JSON.parse((await readBody(req, 65536)).toString('utf8') || '{}');
-        const raw = String(b.text || '');
+        const raw = collapseStutter(String(b.text || ''));
         if (!raw) return json(res, 200, { text: '' });
         const fixed = await correctText(raw);
         if (fixed !== raw) log('corrected', JSON.stringify(raw.slice(0, 30)), '->', JSON.stringify(fixed.slice(0, 30)));
