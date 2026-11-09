@@ -22,6 +22,7 @@ assistant's reply is spoken back. Start talking while it is speaking and it stop
 - **Barge-in** — start speaking while the reply is playing and playback stops immediately
 - **Idle exit** — leaves voice mode after 10 s without speech, so the microphone is not held open
 - **Only voice-triggered replies are spoken** — messages you type stay silent
+- **UI language follows DSH** — the plugin's buttons and settings text switch between Chinese and English together with the host UI language
 - **Local Whisper update check** — optional; watches `faster-whisper` and the local model for new
   versions and lets you update them from the settings page
 
@@ -36,7 +37,7 @@ assistant's reply is spoken back. Start talking while it is speaking and it stop
 
 ### From the release package
 
-1. Download `dsh-voice-dialog-0.1.2.tgz` from
+1. Download `dsh-voice-dialog-0.1.3.tgz` from
    [Releases](https://github.com/QiNFPV/dsh-voice-dialog/releases).
 2. Put the file somewhere permanent (not `/tmp` or `%TEMP%`), then install it with the DSH plugin
    manager (`Settings → Plugins → Install from file`).
@@ -45,7 +46,7 @@ assistant's reply is spoken back. Start talking while it is speaking and it stop
 Command line equivalent:
 
 ```bash
-dsh plugin --profile desktop add /path/to/dsh-voice-dialog-0.1.2.tgz
+dsh plugin --profile desktop add /path/to/dsh-voice-dialog-0.1.3.tgz
 ```
 
 Then add `dsh-voice-dialog` to `dsh.profile.bundles` in the profile and restart DSH.
@@ -81,6 +82,7 @@ Recognition always detects the language automatically.
 - **Auto-correct recognition** — fix obvious errors; sentences with long digit strings are skipped
 - **External APIs (optional)** — OpenAI-compatible speech-to-text / text-to-speech endpoints and
   keys; leave empty to use the built-in backends
+- **UI language follows DSH** — the plugin's buttons and settings text switch between Chinese and English together with the host UI language
 - **Local Whisper update check** — see below
 
 ## Whisper auto-update check
@@ -170,7 +172,7 @@ Logs: `~/.dsh/voice-tutor.log` (rotated to `.log.1` at 2 MB). The last input mod
 
 ## Changelog
 
-### 0.1.2
+### 0.1.3
 
 - **New: local Whisper auto-update check.** Settings → Plugins → Voice Dialog now has an
   "Auto-check local Whisper updates" switch (on by default), an interval (6/12/24/72 hours), a

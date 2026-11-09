@@ -17,6 +17,7 @@ DeepSeek Harness 的**连续语音对话**插件：点一下麦克风，之后�
 - **可打断**：朗读时开口说话，立刻停止播放并听你说
 - **空闲退出**：10 秒没说话自动退出，不会一直占着麦克风
 - **只念语音的回复**：打字发来的消息不会出声
+- **界面跟随 DSH 语言**：插件自己的按钮和设置文案随宿主界面语言在中文 / English 之间切换
 - **本地 Whisper 更新检查**：可选；自动检查 `faster-whisper` 包和本地模型是否有新版，并可在
   设置页里直接更新
 
@@ -32,7 +33,7 @@ DeepSeek Harness 的**连续语音对话**插件：点一下麦克风，之后�
 ### 用发布包安装
 
 1. 从 [Releases](https://github.com/QiNFPV/dsh-voice-dialog/releases) 下载
-   `dsh-voice-dialog-0.1.2.tgz`。
+   `dsh-voice-dialog-0.1.3.tgz`。
 2. 把文件放到一个固定位置（不要放 `/tmp` 或 `%TEMP%`），然后用 DSH 的插件管理器安装
    （设置 → 插件 → 从文件安装）。
 3. 确认 profile 的 bundle 列表里有 `dsh-voice-dialog`，然后完全退出 DSH 再打开。
@@ -40,7 +41,7 @@ DeepSeek Harness 的**连续语音对话**插件：点一下麦克风，之后�
 等价的命令行方式：
 
 ```bash
-dsh plugin --profile desktop add /path/to/dsh-voice-dialog-0.1.2.tgz
+dsh plugin --profile desktop add /path/to/dsh-voice-dialog-0.1.3.tgz
 ```
 
 然后把 `dsh-voice-dialog` 加入 profile 的 `dsh.profile.bundles`，重启 DSH。
@@ -73,6 +74,7 @@ dsh plugin --profile desktop add /path/to/dsh-voice-dialog-0.1.2.tgz
 - **显示全部音色（高级）**：可选更多 Edge 音色
 - **识别结果自动纠错**：修正明显的错字；含长数字的句子跳过
 - **外接接口（可选）**：填写 OpenAI 兼容的识别 / 合成地址与密钥，留空即用内置
+- **界面跟随 DSH 语言**：插件自己的按钮和设置文案随宿主界面语言在中文 / English 之间切换
 - **本地 Whisper 更新检查**：见下一节
 
 ## Whisper 自动更新检查
@@ -149,7 +151,7 @@ dsh plugin --profile desktop add /path/to/dsh-voice-dialog-0.1.2.tgz
 
 ## 更新记录
 
-### 0.1.2
+### 0.1.3
 
 - **新增：本地 Whisper 自动更新检查。** 设置 → 插件 → 语音对话里新增「自动检查本地 Whisper
   更新」开关（默认开启）、检查间隔（6/12/24/72 小时）、「立即检查」按钮，以及显示当前/最新
