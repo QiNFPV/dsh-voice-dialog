@@ -25,6 +25,194 @@ window.__ModuleLoader__.load({
       nb: 'Norsk', el: 'Ελληνικά', hu: 'Magyar', ro: 'Română', sk: 'Slovenčina', uk: 'Українська',
     };
 
+    // ---------- 界面文案 ----------
+    // 跟随 DSH 主体语言：宿主把当前语言同步到 <html lang>（zh-CN / en-US …）。
+    // 非中文一律用英文，缺键时回退中文原文，避免出现空白。
+    const MESSAGES = {
+      zh: {
+        auto: '自动',
+        on: '开',
+        off: '关',
+        checking: '检查中…',
+        checkNow: '立即检查',
+        never: '从未检查',
+        unknown: '未知',
+        upToDate: '已是最新',
+        hasUpdate: '有新版',
+        pleaseWait: '请稍候…',
+        save: '保存',
+        saved: '已保存',
+        saveFailed: '保存失败',
+        saveFailedWith: '保存失败：${err}',
+        checkDone: '检查完成',
+        checkFailedWith: '检查失败：${err}',
+        updateStarted: '更新任务已开始',
+        updateStartFailedWith: '更新启动失败：${err}',
+        labelThinking: '识别中…',
+        labelSpeaking: '朗读中…',
+        labelOn: '语音对话中',
+        labelOff: '语音对话',
+        titleLang: '朗读语言（在 设置 → 插件 → 语音对话 里增减）',
+        titleStart: '进入语音对话（连续对话）',
+        titleStop: '退出语音对话',
+        titleWuBadge: '本地 Whisper / 模型有新版，点击查看并更新',
+        wuFw: 'Whisper 有新版 ${v}',
+        wuModel: '模型有新版',
+        notePaused: '已暂停发送，改完按回车',
+        noteWillSend: '2 秒后自动发送 · 点一下输入框可修改',
+        noteDup: '（重复，已忽略）',
+        noteNotHeard: '没听清，请再说一次',
+        noteCorrected: '已纠错 · 2 秒后发送',
+        noteInputUnavailable: '输入框不可用',
+        noteSttFailed: '转写失败：${err}',
+        noteMicFailed: '麦克风不可用：${err}',
+        noteWuCheckFailed: 'Whisper 检查失败：${err}',
+        noteUpdatingFw: '正在更新 faster-whisper…',
+        noteDownloadingModel: '正在下载模型…',
+        wuTitle: '本地 Whisper 更新',
+        wuAuto: '自动检查：${state} · 每 ${n} 小时',
+        wuHostDown: '宿主暂未响应（宿主侧改动需要重启 DSH 后生效）',
+        wuLastCheck: '上次检查',
+        wuModelLabel: '模型',
+        localLabel: '本地',
+        remoteLabel: '远程',
+        wuModelSize: '模型体积',
+        wuTips: '提示',
+        wuJob: '更新任务',
+        wuUpdateFw: '更新 faster-whisper',
+        wuDownloadModel: '下载新模型',
+        close: '关闭',
+        confirmFw: '确定更新 faster-whisper 吗？\n\n将执行：venv python -m pip install -U faster-whisper\n然后重启 127.0.0.1:8789 上的本地识别桥，等待 /health 就绪。\n失败会自动尝试回滚到当前版本。',
+        confirmModel: '确定下载新模型吗？${size}\n下载完成后会重启本地识别桥；旧缓存不会删除，失败可回滚。',
+        sizeNote: '\n\n体积约 ${size}。',
+        extTitle: '外接接口（可选，OpenAI 兼容）',
+        extAsrHint: '识别接口：POST {url}，multipart 字段 file 与 model，例如 /v1/audio/transcriptions',
+        extAsr: '识别',
+        extTtsHint: '合成接口：POST {url}，JSON {model, input, voice}，例如 /v1/audio/speech',
+        extTts: '合成',
+        phModel: '模型',
+        phVoice: '音色',
+        extSaveHint: '留空则用内置 Edge TTS 与本地识别',
+        wuSectionTitle: '本地 Whisper 更新检查',
+        wuSectionHint: '检查 PyPI 上的 faster-whisper 版本和 HuggingFace 上的模型 revision；离线或出错会静默跳过，不影响语音功能。',
+        wuAutoLabel: '自动检查本地 Whisper 更新',
+        interval: '检查间隔',
+        everyNHours: '每 ${n} 小时',
+        langSectionTitle: '对话栏里可供选择的语言',
+        langSectionHint: '勾选的语言会出现在输入框旁边的下拉里；「自动」始终保留。识别语言始终自动判定。',
+        showAllVoices: '显示全部音色（高级）',
+        voicePick: '具体音色',
+        correctLabel: '识别结果自动纠错（只改错字，数字句跳过）',
+        usageHint: '点一下输入框左侧的麦克风进入连续对话；说完停顿自动断句，文字先进输入框，2 秒后自动发送，期间按任意键或点一下即可暂停修改。',
+        tabVoice: '语音对话',
+      },
+      en: {
+        auto: 'Auto',
+        on: 'on',
+        off: 'off',
+        checking: 'Checking…',
+        checkNow: 'Check now',
+        never: 'Never checked',
+        unknown: 'Unknown',
+        upToDate: 'Up to date',
+        hasUpdate: 'Update available',
+        pleaseWait: 'Working…',
+        save: 'Save',
+        saved: 'Saved',
+        saveFailed: 'Save failed',
+        saveFailedWith: 'Save failed: ${err}',
+        checkDone: 'Check complete',
+        checkFailedWith: 'Check failed: ${err}',
+        updateStarted: 'Update started',
+        updateStartFailedWith: 'Failed to start update: ${err}',
+        labelThinking: 'Transcribing…',
+        labelSpeaking: 'Speaking…',
+        labelOn: 'Voice chat on',
+        labelOff: 'Voice chat',
+        titleLang: 'Speech language (edit in Settings → Plugins → Voice chat)',
+        titleStart: 'Start continuous voice chat',
+        titleStop: 'Stop voice chat',
+        titleWuBadge: 'Whisper / model update available — click to review',
+        wuFw: 'Whisper ${v} available',
+        wuModel: 'Model update available',
+        notePaused: 'Send paused — edit, then press Enter',
+        noteWillSend: 'Sending in 2 seconds · click the input to edit',
+        noteDup: '(duplicate, ignored)',
+        noteNotHeard: "Didn't catch that — please say it again",
+        noteCorrected: 'Corrected · sending in 2s',
+        noteInputUnavailable: 'Input box unavailable',
+        noteSttFailed: 'Transcription failed: ${err}',
+        noteMicFailed: 'Microphone unavailable: ${err}',
+        noteWuCheckFailed: 'Whisper check failed: ${err}',
+        noteUpdatingFw: 'Updating faster-whisper…',
+        noteDownloadingModel: 'Downloading model…',
+        wuTitle: 'Local Whisper update',
+        wuAuto: 'Auto-check: ${state} · every ${n}h',
+        wuHostDown: 'Host not responding yet (host-side changes need a DSH restart)',
+        wuLastCheck: 'Last check',
+        wuModelLabel: 'Model',
+        localLabel: 'local',
+        remoteLabel: 'remote',
+        wuModelSize: 'Model size',
+        wuTips: 'Notes',
+        wuJob: 'Update job',
+        wuUpdateFw: 'Update faster-whisper',
+        wuDownloadModel: 'Download model',
+        close: 'Close',
+        confirmFw: 'Update faster-whisper?\n\nThis runs: venv python -m pip install -U faster-whisper\nthen restarts the local ASR bridge on 127.0.0.1:8789 and waits for /health. On failure it tries to roll back to the current version.',
+        confirmModel: 'Download the new model?${size}\nThe local ASR bridge restarts afterwards; the old cache is kept, so a failure can be rolled back.',
+        sizeNote: '\n\nAbout ${size}.',
+        extTitle: 'External endpoints (optional, OpenAI-compatible)',
+        extAsrHint: 'Speech-to-text: POST {url}, multipart fields file and model, e.g. /v1/audio/transcriptions',
+        extAsr: 'STT',
+        extTtsHint: 'Text-to-speech: POST {url}, JSON {model, input, voice}, e.g. /v1/audio/speech',
+        extTts: 'TTS',
+        phModel: 'model',
+        phVoice: 'voice',
+        extSaveHint: 'Leave empty to use the built-in Edge TTS and local speech recognition',
+        wuSectionTitle: 'Local Whisper update check',
+        wuSectionHint: 'Checks the faster-whisper version on PyPI and the model revision on HuggingFace. Offline or failing checks are skipped silently and never affect voice features.',
+        wuAutoLabel: 'Auto-check for local Whisper updates',
+        interval: 'Interval',
+        everyNHours: 'Every ${n}h',
+        langSectionTitle: 'Languages offered in the composer',
+        langSectionHint: 'Checked languages appear in the dropdown next to the input; “Auto” is always kept. The recognition language is always detected automatically.',
+        showAllVoices: 'Show all voices (advanced)',
+        voicePick: 'Voice',
+        correctLabel: 'Auto-correct transcriptions (typos only, numeric sentences skipped)',
+        usageHint: 'Click the microphone left of the input to start continuous chat: a pause ends the sentence, the text lands in the input, and it is sent after 2 seconds — press any key or click to pause and edit.',
+        tabVoice: 'Voice chat',
+      },
+    };
+
+    const uiLang = () => {
+      try {
+        const l = String((document.documentElement && document.documentElement.getAttribute('lang')) || '').toLowerCase();
+        if (l) return l.startsWith('zh') ? 'zh' : 'en';
+        return String(navigator.language || '').toLowerCase().startsWith('zh') ? 'zh' : 'en';
+      } catch { return 'zh'; }
+    };
+
+    const t = (key, vars) => {
+      const dict = MESSAGES[uiLang()] || MESSAGES.en;
+      let text = dict[key] !== undefined ? dict[key] : (MESSAGES.zh[key] !== undefined ? MESSAGES.zh[key] : key);
+      if (vars) for (const [k, v] of Object.entries(vars)) text = text.split('${' + k + '}').join(String(v));
+      return text;
+    };
+
+    // 语言切换后让已渲染的 React 组件重画（宿主改的是 <html lang>）
+    const LANG_LISTENERS = new Set();
+    const notifyLang = () => { for (const f of LANG_LISTENERS) { try { f(); } catch {} } };
+    const useUiLang = () => {
+      const [, force] = React.useState(0);
+      React.useEffect(() => {
+        const f = () => force((n) => n + 1);
+        LANG_LISTENERS.add(f);
+        return () => { LANG_LISTENERS.delete(f); };
+      }, []);
+      return uiLang();
+    };
+
     const store = {
       get(k, d) { try { return localStorage.getItem(k) || d; } catch { return d; } },
       set(k, v) { try { localStorage.setItem(k, v); } catch {} },
@@ -136,7 +324,7 @@ window.__ModuleLoader__.load({
     };
     const shortRev = (r) => String(r || '').slice(0, 8);
     const fmtTime = (iso) => {
-      if (!iso) return '从未检查';
+      if (!iso) return t('never');
       const d = new Date(iso);
       return Number.isNaN(d.getTime()) ? String(iso) : d.toLocaleString();
     };
@@ -144,8 +332,8 @@ window.__ModuleLoader__.load({
       const r = wuStatus && wuStatus.result;
       if (!r || !r.hasUpdate) return '';
       const parts = [];
-      if (r.fastwhisper && r.fastwhisper.hasUpdate) parts.push('Whisper 有新版 ' + (r.fastwhisper.latest || ''));
-      if (r.model && r.model.hasUpdate) parts.push('模型有新版');
+      if (r.fastwhisper && r.fastwhisper.hasUpdate) parts.push(t('wuFw', { v: r.fastwhisper.latest || '' }));
+      if (r.model && r.model.hasUpdate) parts.push(t('wuModel'));
       return parts.join(' · ');
     };
     const loadWu = (force) => {
@@ -169,7 +357,7 @@ window.__ModuleLoader__.load({
     const stopWuPolling = () => { if (wuPoll) { clearInterval(wuPoll); wuPoll = 0; } };
 
     const checkWhisperNow = async (btn) => {
-      if (btn) { btn.disabled = true; btn.textContent = '检查中…'; }
+      if (btn) { btn.disabled = true; btn.textContent = t('checking'); }
       try {
         const r = await fetch('/voice-tutor/whisper-update/check', { method: 'POST' });
         const d = await r.json().catch(() => ({}));
@@ -178,10 +366,10 @@ window.__ModuleLoader__.load({
         emit();
         return d;
       } catch (e) {
-        note('Whisper 检查失败：' + String(e && e.message || e));
+        note(t('noteWuCheckFailed', { err: String(e && e.message || e) }));
         return null;
       } finally {
-        if (btn) { btn.disabled = false; btn.textContent = '立即检查'; }
+        if (btn) { btn.disabled = false; btn.textContent = t('checkNow'); }
       }
     };
 
@@ -189,16 +377,11 @@ window.__ModuleLoader__.load({
     const applyWhisper = async (target) => {
       const r = (wuStatus && wuStatus.result) || {};
       if (target === 'fastwhisper') {
-        const ok = window.confirm('确定更新 faster-whisper 吗？\n\n'
-          + '将执行：venv python -m pip install -U faster-whisper\n'
-          + '然后重启 127.0.0.1:8789 上的本地识别桥，等待 /health 就绪。\n'
-          + '失败会自动尝试回滚到当前版本。');
+        const ok = window.confirm(t('confirmFw'));
         if (!ok) return;
       } else {
         const size = fmtBytes(r.model && r.model.sizeBytes);
-        const ok = window.confirm('确定下载新模型吗？'
-          + (size ? '\n\n体积约 ' + size + '。' : '')
-          + '\n下载完成后会重启本地识别桥；旧缓存不会删除，失败可回滚。');
+        const ok = window.confirm(t('confirmModel', { size: size ? t('sizeNote', { size }) : '' }));
         if (!ok) return;
       }
       try {
@@ -209,11 +392,11 @@ window.__ModuleLoader__.load({
         });
         const d = await resp.json().catch(() => ({}));
         if (!resp.ok) throw new Error(d.error || ('HTTP ' + resp.status));
-        note(target === 'fastwhisper' ? '正在更新 faster-whisper…' : '正在下载模型…');
+        note(target === 'fastwhisper' ? t('noteUpdatingFw') : t('noteDownloadingModel'));
         loadWu(true);
         startWuPolling();
       } catch (e) {
-        window.alert('更新启动失败：' + String(e && e.message || e));
+        window.alert(t('updateStartFailedWith', { err: String(e && e.message || e) }));
       }
     };
 
@@ -263,28 +446,28 @@ window.__ModuleLoader__.load({
         const job = st && st.job;
         box.textContent = '';
 
-        box.appendChild(el('div', 'font-size:15px;font-weight:600;margin-bottom:2px;', '本地 Whisper 更新'));
+        box.appendChild(el('div', 'font-size:15px;font-weight:600;margin-bottom:2px;', t('wuTitle')));
         box.appendChild(el('div', 'font-size:11px;opacity:.5;margin-bottom:10px;',
-          st ? ('自动检查：' + (st.enabled ? '开' : '关') + ' · 每 ' + (st.intervalHours || 24) + ' 小时')
-            : '宿主暂未响应（宿主侧改动需要重启 DSH 后生效）'));
+          st ? t('wuAuto', { state: t(st.enabled ? 'on' : 'off'), n: st.intervalHours || 24 })
+            : t('wuHostDown')));
 
         const body = el('div', 'display:flex;flex-direction:column;gap:4px;');
-        body.appendChild(line('上次检查', fmtTime(st && st.lastCheckAt)));
+        body.appendChild(line(t('wuLastCheck'), fmtTime(st && st.lastCheckAt)));
         body.appendChild(line('faster-whisper',
-          (fw.installed || '未知') + ' → ' + (fw.latest || '未知') + ' · '
-          + (fw.hasUpdate ? '有新版' : (fw.installed && fw.latest ? '已是最新' : '未知')),
+          (fw.installed || t('unknown')) + ' → ' + (fw.latest || t('unknown')) + ' · '
+          + (fw.hasUpdate ? t('hasUpdate') : (fw.installed && fw.latest ? t('upToDate') : t('unknown'))),
           fw.hasUpdate ? '#f5b544' : ''));
-        body.appendChild(line('模型',
-          (md.repo || '') + ' · 本地 ' + (shortRev(md.localRevision) || '—')
-          + ' · 远程 ' + (shortRev(md.remoteRevision) || '—') + ' · '
-          + (md.hasUpdate ? '有新版' : (md.localRevision && md.remoteRevision ? '已是最新' : '未知')),
+        body.appendChild(line(t('wuModelLabel'),
+          (md.repo || '') + ' · ' + t('localLabel') + ' ' + (shortRev(md.localRevision) || '—')
+          + ' · ' + t('remoteLabel') + ' ' + (shortRev(md.remoteRevision) || '—') + ' · '
+          + (md.hasUpdate ? t('hasUpdate') : (md.localRevision && md.remoteRevision ? t('upToDate') : t('unknown'))),
           md.hasUpdate ? '#f5b544' : ''));
-        if (md.sizeBytes) body.appendChild(line('模型体积', fmtBytes(md.sizeBytes)));
+        if (md.sizeBytes) body.appendChild(line(t('wuModelSize'), fmtBytes(md.sizeBytes)));
         if (r && r.errors && r.errors.length) {
-          body.appendChild(line('提示', r.errors.slice(0, 2).join('；'), '#f59e0b'));
+          body.appendChild(line(t('wuTips'), r.errors.slice(0, 2).join(' / '), '#f59e0b'));
         }
         if (job) {
-          body.appendChild(line('更新任务',
+          body.appendChild(line(t('wuJob'),
             (job.phase || '') + (job.percent !== null && job.percent !== undefined ? ' ' + job.percent + '%' : '')
             + (job.error ? ' × ' + job.error : ''),
             job.error ? '#ef4444' : ''));
@@ -300,15 +483,15 @@ window.__ModuleLoader__.load({
           b.onclick = onclick;
           return b;
         };
-        const checkBtn = mkBtn('立即检查', () => checkWhisperNow(checkBtn));
+        const checkBtn = mkBtn(t('checkNow'), () => checkWhisperNow(checkBtn));
         row.appendChild(checkBtn);
         if (r && fw.hasUpdate) {
-          row.appendChild(mkBtn('更新 faster-whisper', () => applyWhisper('fastwhisper'), true));
+          row.appendChild(mkBtn(t('wuUpdateFw'), () => applyWhisper('fastwhisper'), true));
         }
         if (r && md.hasUpdate) {
-          row.appendChild(mkBtn('下载新模型', () => applyWhisper('model'), true));
+          row.appendChild(mkBtn(t('wuDownloadModel'), () => applyWhisper('model'), true));
         }
-        row.appendChild(mkBtn('关闭', () => closeWhisperDialog()));
+        row.appendChild(mkBtn(t('close'), () => closeWhisperDialog()));
         box.appendChild(row);
       }
 
@@ -367,7 +550,7 @@ window.__ModuleLoader__.load({
       window.removeEventListener('keydown', E.dwell.onInteract, true);
       window.removeEventListener('pointerdown', E.dwell.onInteract, true);
       E.dwell = null;
-      note('已暂停发送，改完按回车');
+      note(t('notePaused'));
     };
 
     const beginDwell = (text, ia) => {
@@ -384,7 +567,7 @@ window.__ModuleLoader__.load({
       E.dwell = { text, timer, onInteract };
       window.addEventListener('keydown', onInteract, true);
       window.addEventListener('pointerdown', onInteract, true);
-      note('2 秒后自动发送 · 点一下输入框可修改');
+      note(t('noteWillSend'));
     };
 
     // ---------- 浏览器端转 WAV：不需要 ffmpeg ----------
@@ -458,9 +641,9 @@ window.__ModuleLoader__.load({
         });
         const d = await r.json();
         if (!r.ok) throw new Error(d.error || ('HTTP ' + r.status));
-        if (d.dup) { note('（重复，已忽略）'); return; }
+        if (d.dup) { note(t('noteDup')); return; }
         const text = String(d.text || '').trim();
-        if (!text) { note('没听清，请再说一次'); return; }
+        if (!text) { note(t('noteNotHeard')); return; }
         note('「' + text.slice(0, 32) + '」');
         const ia = (E.props || {}).inputActions;
         if (ia && ia.setDraft) {
@@ -477,11 +660,11 @@ window.__ModuleLoader__.load({
             if (!E.dwell || E.dwell.text !== text) return;   // 已被取消或用户改过
             try { ia.setDraft(fixed); } catch {}
             beginDwell(fixed, ia);
-            note('已纠错 · 2 秒后发送');
+            note(t('noteCorrected'));
           }).catch(() => {});
-        } else note('输入框不可用');
+        } else note(t('noteInputUnavailable'));
       } catch (e) {
-        note('转写失败：' + String(e && e.message || e));
+        note(t('noteSttFailed', { err: String(e && e.message || e) }));
       } finally {
         E.busy = false;
         setTimeout(() => { if (E.state === 'thinking') go('listening'); }, AFTER_SEND_MS);
@@ -593,7 +776,7 @@ window.__ModuleLoader__.load({
         E.raf = requestAnimationFrame(tick);
       } catch (e) {
         stop();
-        note('麦克风不可用：' + String(e && e.message || e));
+        note(t('noteMicFailed', { err: String(e && e.message || e) }));
       }
     };
 
@@ -632,6 +815,7 @@ window.__ModuleLoader__.load({
 
     // ---------- UI ----------
     function Panel(props) {
+      useUiLang();
       const [, force] = React.useState(0);
       E.props = props;
       React.useEffect(() => {
@@ -652,7 +836,7 @@ window.__ModuleLoader__.load({
 
       // 默认只给四种：自动 / 中文 / English / 日本語；「⋯」展开全部音色
       const SIMPLE = [
-        { id: 'auto', label: '自动' },
+        { id: 'auto', label: t('auto') },
         { id: 'zh-CN-XiaoxiaoNeural', label: '中文' },
         { id: 'en-US-AvaNeural', label: 'English' },
         { id: 'ja-JP-NanamiNeural', label: '日本語' },
@@ -672,13 +856,13 @@ window.__ModuleLoader__.load({
       };
       const adv = store.get('vt-adv', '0') === '1';
 
-      const label = E.state === 'thinking' ? '识别中…'
-        : E.state === 'speaking' ? '朗读中…'
-        : on ? '语音对话中' : '语音对话';
+      const label = E.state === 'thinking' ? t('labelThinking')
+        : E.state === 'speaking' ? t('labelSpeaking')
+        : on ? t('labelOn') : t('labelOff');
 
       const ring = Math.min(1, E.level * 18);
       // 语言 chip：只列出用户在设置里勾选过的语言
-      const langItems = [{ id: 'auto', label: '自动' }]
+      const langItems = [{ id: 'auto', label: t('auto') }]
         .concat(getLangs().map((c) => ({ id: c, label: LANG_LABEL[c] || c.toUpperCase() })));
       const curId = cur === 'auto' ? 'auto' : String(cur).split('-')[0];
       const curLabel = (langItems.find((x) => x.id === curId) || langItems[0]).label;
@@ -699,13 +883,13 @@ window.__ModuleLoader__.load({
         h('button', {
           type: 'button',
           style: chipStyle,
-          title: '朗读语言（在 设置 → 插件 → 语音对话 里增减）',
+          title: t('titleLang'),
           onClick: (e) => openMenu(e.currentTarget.getBoundingClientRect(), langItems, curId, pickLangChip),
         }, curLabel, ' ▾'),
         h('button', {
           type: 'button',
           onClick: () => (on ? stop() : start()),
-          title: on ? '退出语音对话' : '进入语音对话（连续对话）',
+          title: on ? t('titleStop') : t('titleStart'),
           style: {
             display: 'inline-flex', alignItems: 'center', gap: 6, height: 28, padding: '0 10px',
             borderRadius: 999, cursor: 'pointer', fontSize: 12, lineHeight: '26px',
@@ -726,7 +910,7 @@ window.__ModuleLoader__.load({
             : null),
         wuBadgeText() ? h('button', {
           type: 'button',
-          title: '本地 Whisper / 模型有新版，点击查看并更新',
+          title: t('titleWuBadge'),
           onClick: () => openWhisperDialog(),
           style: {
             height: 28, padding: '0 9px', borderRadius: 999, cursor: 'pointer', fontSize: 11,
@@ -741,6 +925,7 @@ window.__ModuleLoader__.load({
 
     // ---------- 外接接口表单（OpenAI 兼容）----------
     function ExternalForm() {
+      useUiLang();
       const [cfg, setCfg] = React.useState(null);
       const [msg, setMsg] = React.useState('');
       React.useEffect(() => {
@@ -756,8 +941,8 @@ window.__ModuleLoader__.load({
           const r = await fetch('/voice-tutor/config', {
             method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(cfg),
           });
-          setMsg(r.ok ? '已保存' : '保存失败');
-        } catch { setMsg('保存失败'); }
+          setMsg(r.ok ? t('saved') : t('saveFailed'));
+        } catch { setMsg(t('saveFailed')); }
         setTimeout(() => setMsg(''), 2500);
       };
       const inp = {
@@ -768,20 +953,20 @@ window.__ModuleLoader__.load({
       const line = { display: 'flex', alignItems: 'center', gap: 8, fontSize: 12 };
       const hint = { fontSize: 11, opacity: .5, lineHeight: '16px' };
       return h('div', { style: { display: 'flex', flexDirection: 'column', gap: 10, marginTop: 6 } },
-        h('div', { style: { fontSize: 13, opacity: .85 } }, '外接接口（可选，OpenAI 兼容）'),
-        h('div', { style: hint }, '识别接口：POST {url}，multipart 字段 file 与 model，例如 /v1/audio/transcriptions'),
+        h('div', { style: { fontSize: 13, opacity: .85 } }, t('extTitle')),
+        h('div', { style: hint }, t('extAsrHint')),
         h('div', { style: line },
-          h('span', { style: { width: 46, opacity: .7 } }, '识别'),
+          h('span', { style: { width: 46, opacity: .7 } }, t('extAsr')),
           h('input', { style: inp, placeholder: 'URL', value: (cfg.asr || {}).url || '', onChange: (e) => set('asr', 'url', e.target.value) }),
           h('input', { style: inp, placeholder: 'API Key', type: 'password', value: (cfg.asr || {}).key || '', onChange: (e) => set('asr', 'key', e.target.value) }),
-          h('input', { style: { ...inp, maxWidth: 150 }, placeholder: '模型', value: (cfg.asr || {}).model || '', onChange: (e) => set('asr', 'model', e.target.value) })),
-        h('div', { style: hint }, '合成接口：POST {url}，JSON {model, input, voice}，例如 /v1/audio/speech'),
+          h('input', { style: { ...inp, maxWidth: 150 }, placeholder: t('phModel'), value: (cfg.asr || {}).model || '', onChange: (e) => set('asr', 'model', e.target.value) })),
+        h('div', { style: hint }, t('extTtsHint')),
         h('div', { style: line },
-          h('span', { style: { width: 46, opacity: .7 } }, '合成'),
+          h('span', { style: { width: 46, opacity: .7 } }, t('extTts')),
           h('input', { style: inp, placeholder: 'URL', value: (cfg.tts || {}).url || '', onChange: (e) => set('tts', 'url', e.target.value) }),
           h('input', { style: inp, placeholder: 'API Key', type: 'password', value: (cfg.tts || {}).key || '', onChange: (e) => set('tts', 'key', e.target.value) }),
-          h('input', { style: { ...inp, maxWidth: 120 }, placeholder: '模型', value: (cfg.tts || {}).model || '', onChange: (e) => set('tts', 'model', e.target.value) }),
-          h('input', { style: { ...inp, maxWidth: 110 }, placeholder: '音色', value: (cfg.tts || {}).voice || '', onChange: (e) => set('tts', 'voice', e.target.value) })),
+          h('input', { style: { ...inp, maxWidth: 120 }, placeholder: t('phModel'), value: (cfg.tts || {}).model || '', onChange: (e) => set('tts', 'model', e.target.value) }),
+          h('input', { style: { ...inp, maxWidth: 110 }, placeholder: t('phVoice'), value: (cfg.tts || {}).voice || '', onChange: (e) => set('tts', 'voice', e.target.value) })),
         h('div', { style: { ...line, gap: 10 } },
           h('button', {
             type: 'button', onClick: save,
@@ -789,13 +974,14 @@ window.__ModuleLoader__.load({
               height: 28, padding: '0 12px', borderRadius: 8, cursor: 'pointer', fontSize: 12,
               border: '1px solid var(--dsw-alias-border-l2,#444)', background: 'transparent', color: 'inherit',
             },
-          }, '保存'),
-          h('span', { style: { ...hint, opacity: .7 } }, msg || '留空则用内置 Edge TTS 与本地识别')),
+          }, t('save')),
+          h('span', { style: { ...hint, opacity: .7 } }, msg || t('extSaveHint'))),
       );
     }
 
     // ---------- 设置页：本地 Whisper 更新检查 ----------
     function WhisperSettings() {
+      useUiLang();
       const [cfg, setCfg] = React.useState(null);
       const [st, setSt] = React.useState(null);
       const [msg, setMsg] = React.useState('');
@@ -822,8 +1008,8 @@ window.__ModuleLoader__.load({
       };
       React.useEffect(() => {
         load();
-        const t = setInterval(load, 4000);
-        return () => clearInterval(t);
+        const timer = setInterval(load, 4000);
+        return () => clearInterval(timer);
       }, []);
 
       const save = async (patch) => {
@@ -834,23 +1020,23 @@ window.__ModuleLoader__.load({
             method: 'POST', headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ whisperUpdate: { enabled: next.enabled, intervalHours: Number(next.intervalHours) || 24 } }),
           });
-          setMsg('已保存');
+          setMsg(t('saved'));
           setTimeout(() => setMsg(''), 2000);
           load();
         } catch (e) {
-          setMsg('保存失败：' + String(e && e.message || e));
+          setMsg(t('saveFailedWith', { err: String(e && e.message || e) }));
         }
       };
 
       const checkNow = async () => {
         setBusy(true);
-        setMsg('检查中…');
+        setMsg(t('checking'));
         try {
           const d = await getJson('/voice-tutor/whisper-update/check', { method: 'POST' });
           setSt(d);
-          setMsg('检查完成');
+          setMsg(t('checkDone'));
         } catch (e) {
-          setMsg('检查失败：' + String(e && e.message || e));
+          setMsg(t('checkFailedWith', { err: String(e && e.message || e) }));
         } finally {
           setBusy(false);
           setTimeout(() => setMsg(''), 3000);
@@ -877,11 +1063,8 @@ window.__ModuleLoader__.load({
       };
       const apply = async (target) => {
         const ok = target === 'fastwhisper'
-          ? window.confirm('确定更新 faster-whisper 吗？\n\n将执行 venv python -m pip install -U faster-whisper，'
-            + '并重启 127.0.0.1:8789 上的本地识别桥；失败会尝试回滚。')
-          : window.confirm('确定下载新模型吗？'
-            + (md.sizeBytes ? '\n体积约 ' + fmtBytes(md.sizeBytes) + '。' : '')
-            + '\n下载完成后重启本地识别桥，旧缓存不会删除，失败可回滚。');
+          ? window.confirm(t('confirmFw'))
+          : window.confirm(t('confirmModel', { size: md.sizeBytes ? t('sizeNote', { size: fmtBytes(md.sizeBytes) }) : '' }));
         if (!ok) return;
         setBusy(true);
         try {
@@ -889,31 +1072,31 @@ window.__ModuleLoader__.load({
             method: 'POST', headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ target, confirm: true }),
           });
-          setMsg('更新任务已开始');
+          setMsg(t('updateStarted'));
           load();
         } catch (e) {
-          setMsg('更新启动失败：' + String(e && e.message || e));
+          setMsg(t('updateStartFailedWith', { err: String(e && e.message || e) }));
         } finally {
           setBusy(false);
         }
       };
 
       const status = st
-        ? ('自动检查：' + (st.enabled ? '开' : '关') + ' · 每 ' + (st.intervalHours || 24) + ' 小时')
-        : '宿主侧尚未响应：宿主改动需重启 DSH 后生效';
+        ? t('wuAuto', { state: t(st.enabled ? 'on' : 'off'), n: st.intervalHours || 24 })
+        : t('wuHostDown');
       return h('div', {
         style: { display: 'flex', flexDirection: 'column', gap: 8, paddingTop: 12, borderTop: '1px solid var(--dsw-alias-border-l2,#333)' },
       },
-        h('div', { style: { fontSize: 13, opacity: .85 } }, '本地 Whisper 更新检查'),
-        h('div', { style: hint }, '检查 PyPI 上的 faster-whisper 版本和 HuggingFace 上的模型 revision；离线或出错会静默跳过，不影响语音功能。'),
+        h('div', { style: { fontSize: 13, opacity: .85 } }, t('wuSectionTitle')),
+        h('div', { style: hint }, t('wuSectionHint')),
         h('label', { style: { ...row, cursor: 'pointer' } },
           h('input', {
             type: 'checkbox', checked: cfg.enabled !== false,
             onChange: () => save({ enabled: cfg.enabled === false }),
           }),
-          h('span', null, '自动检查本地 Whisper 更新')),
+          h('span', null, t('wuAutoLabel'))),
         h('div', { style: row },
-          h('span', { style: { ...hint, width: 96 } }, '检查间隔'),
+          h('span', { style: { ...hint, width: 96 } }, t('interval')),
           h('select', {
             value: Number(cfg.intervalHours) || 24,
             style: {
@@ -922,38 +1105,39 @@ window.__ModuleLoader__.load({
               background: 'var(--dsw-alias-bg-layer-2,transparent)', color: 'inherit',
             },
             onChange: (e) => save({ intervalHours: Number(e.target.value) }),
-          }, [6, 12, 24, 72].map((n) => h('option', { key: n, value: n }, '每 ' + n + ' 小时')))),
+          }, [6, 12, 24, 72].map((n) => h('option', { key: n, value: n }, t('everyNHours', { n }))))),
         h('div', { style: row },
           h('button', { type: 'button', style: btnStyle, disabled: busy, onClick: checkNow },
-            busy ? '请稍候…' : '立即检查'),
+            busy ? t('pleaseWait') : t('checkNow')),
           h('span', { style: { ...hint, opacity: .7 } }, msg || status)),
         h('div', { style: box },
-          line('上次检查', fmtTime(st && st.lastCheckAt)),
-          line('faster-whisper', (fw.installed || '未知') + ' → 最新 ' + (fw.latest || '未知') + ' · '
-            + (fw.hasUpdate ? '有新版' : (fw.installed && fw.latest ? '已是最新' : '未知')),
+          line(t('wuLastCheck'), fmtTime(st && st.lastCheckAt)),
+          line('faster-whisper', (fw.installed || t('unknown')) + ' → ' + (fw.latest || t('unknown')) + ' · '
+            + (fw.hasUpdate ? t('hasUpdate') : (fw.installed && fw.latest ? t('upToDate') : t('unknown'))),
             fw.hasUpdate ? '#f5b544' : ''),
-          line('模型', (md.repo || '—') + ' · 本地 ' + (shortRev(md.localRevision) || '—')
-            + ' · 远程 ' + (shortRev(md.remoteRevision) || '—') + ' · '
-            + (md.hasUpdate ? '有新版' : (md.localRevision && md.remoteRevision ? '已是最新' : '未知')),
+          line(t('wuModelLabel'), (md.repo || '—') + ' · ' + t('localLabel') + ' ' + (shortRev(md.localRevision) || '—')
+            + ' · ' + t('remoteLabel') + ' ' + (shortRev(md.remoteRevision) || '—') + ' · '
+            + (md.hasUpdate ? t('hasUpdate') : (md.localRevision && md.remoteRevision ? t('upToDate') : t('unknown'))),
             md.hasUpdate ? '#f5b544' : ''),
-          md.sizeBytes ? line('模型体积', fmtBytes(md.sizeBytes)) : null,
-          w && w.errors && w.errors.length ? line('提示', w.errors.slice(0, 2).join('；'), '#f59e0b') : null,
-          job ? line('更新任务', (job.phase || '')
+          md.sizeBytes ? line(t('wuModelSize'), fmtBytes(md.sizeBytes)) : null,
+          w && w.errors && w.errors.length ? line(t('wuTips'), w.errors.slice(0, 2).join(' / '), '#f59e0b') : null,
+          job ? line(t('wuJob'), (job.phase || '')
             + (job.percent !== null && job.percent !== undefined ? ' ' + job.percent + '%' : '')
             + (job.error ? ' × ' + job.error : ''), job.error ? '#ef4444' : '') : null,
           (w && (fw.hasUpdate || md.hasUpdate)) ? h('div', { style: { ...row, marginTop: 6 } },
             fw.hasUpdate ? h('button', {
               type: 'button', disabled: busy, onClick: () => apply('fastwhisper'),
               style: { ...btnStyle, borderColor: '#f5b544', color: '#f5b544' },
-            }, '更新 faster-whisper') : null,
+            }, t('wuUpdateFw')) : null,
             md.hasUpdate ? h('button', {
               type: 'button', disabled: busy, onClick: () => apply('model'),
               style: { ...btnStyle, borderColor: '#f5b544', color: '#f5b544' },
-            }, '下载新模型') : null) : null));
+            }, t('wuDownloadModel')) : null) : null));
     }
 
     // ---------- 设置面板（设置 → 插件 → 语音对话）----------
     function Settings() {
+      useUiLang();
       const [, force] = React.useState(0);
       React.useEffect(() => {
         const f = () => force((x) => x + 1);
@@ -963,7 +1147,7 @@ window.__ModuleLoader__.load({
       }, []);
 
       const SIMPLE = [
-        { id: 'auto', label: '自动' },
+        { id: 'auto', label: t('auto') },
         { id: 'zh-CN-XiaoxiaoNeural', label: '中文' },
         { id: 'en-US-AvaNeural', label: 'English' },
         { id: 'ja-JP-NanamiNeural', label: '日本語' },
@@ -1001,8 +1185,8 @@ window.__ModuleLoader__.load({
 
       return h('div', { style: { display: 'flex', flexDirection: 'column', gap: 14, padding: '4px 2px', maxWidth: 620 } },
         h('div', { style: { display: 'flex', flexDirection: 'column', gap: 6 } },
-          h('div', { style: { fontSize: 13, opacity: .85 } }, '对话栏里可供选择的语言'),
-          h('div', { style: { fontSize: 12, opacity: .5 } }, '勾选的语言会出现在输入框旁边的下拉里；「自动」始终保留。识别语言始终自动判定。'),
+          h('div', { style: { fontSize: 13, opacity: .85 } }, t('langSectionTitle')),
+          h('div', { style: { fontSize: 12, opacity: .5 } }, t('langSectionHint')),
           h('div', {
             style: {
               display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(120px,1fr))',
@@ -1022,9 +1206,9 @@ window.__ModuleLoader__.load({
             type: 'checkbox', checked: adv,
             onChange: () => { store.set('vt-adv', adv ? '0' : '1'); emit(); },
           }),
-          h('span', null, '显示全部音色（高级）')),
+          h('span', null, t('showAllVoices'))),
         adv ? h('div', { style: { ...row } },
-          h('span', { style: { width: 96, opacity: .8 } }, '具体音色'),
+          h('span', { style: { width: 96, opacity: .8 } }, t('voicePick')),
           h('select', {
             value: voices.some((v) => v.id === cur) ? cur : (voices[0] ? voices[0].id : ''),
             style: { ...sel, minWidth: 260 },
@@ -1040,9 +1224,9 @@ window.__ModuleLoader__.load({
               emit();
             },
           }),
-          h('span', null, '识别结果自动纠错（只改错字，数字句跳过）')),
+          h('span', null, t('correctLabel'))),
         h('div', { style: { fontSize: 12, opacity: .55, lineHeight: '18px' } },
-          '点一下输入框左侧的麦克风进入连续对话；说完停顿自动断句，文字先进输入框，2 秒后自动发送，期间按任意键或点一下即可暂停修改。'),
+          t('usageHint')),
         h(WhisperSettings),
         h(ExternalForm));
     }
@@ -1064,8 +1248,16 @@ window.__ModuleLoader__.load({
           name: 'conversation.input.left', id: 'voice-tutor', order: 4,
         }, Panel));
         ctx.slots.inject('settings.plugins.tab', () => ctx.slots.register({
-          name: 'settings.plugins.tab', id: 'voice-chat', label: '语音对话', order: 25,
+          name: 'settings.plugins.tab', id: 'voice-chat', label: t('tabVoice'), order: 25,
         }, Settings));
+        // 宿主切换界面语言时只改 <html lang>，这里跟一下，让已渲染的文案重画
+        try {
+          const root = document.documentElement;
+          const mo = new MutationObserver(() => { notifyLang(); emit(); });
+          mo.observe(root, { attributes: true, attributeFilter: ['lang'] });
+          notifyLang();
+          ctx.effect(() => () => mo.disconnect(), 'voice-tutor: lang');
+        } catch { /* ignore */ }
       },
     };
   },

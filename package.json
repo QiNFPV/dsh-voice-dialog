@@ -28,6 +28,7 @@
     ".": "./index.js",
     "./client": "./client.js",
     "./cordis.patch.yml": "./cordis.patch.yml",
+    "./locale/*": "./locale/*",
     "./package.json": "./package.json"
   },
   "files": [
@@ -36,6 +37,7 @@
     "tts.mjs",
     "whisper-update.mjs",
     "cordis.patch.yml",
+    "locale",
     "README.md",
     "README.zh-CN.md",
     "安装说明.txt",

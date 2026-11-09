@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Voice Dialog",
+    "description": "Continuous voice conversation: tap the microphone once and keep talking. Pauses split sentences automatically, a 2-second window confirms before sending, replies are spoken aloud, and speaking interrupts playback. Local Whisper recognition plus multilingual voices."
+  }
+}
