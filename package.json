@@ -1,0 +1,60 @@
+{
+  "name": "dsh-voice-dialog",
+  "version": "0.1.0",
+  "description": "Continuous voice conversation for DeepSeek Harness: one mic toggle, automatic sentence splitting, a 2-second confirm window before sending, spoken replies with barge-in.",
+  "type": "module",
+  "icon": "icon.svg",
+  "license": "MIT",
+  "author": "QiNPC",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/QiNFPV/dsh-voice-dialog.git"
+  },
+  "bugs": {
+    "url": "https://github.com/QiNFPV/dsh-voice-dialog/issues"
+  },
+  "homepage": "https://github.com/QiNFPV/dsh-voice-dialog#readme",
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "immediately": true,
+      "inject": [
+        "@deepseek-ai/dsh-client-runtime"
+      ]
+    }
+  },
+  "exports": {
+    ".": "./index.js",
+    "./client": "./client.js",
+    "./cordis.patch.yml": "./cordis.patch.yml",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "index.js",
+    "client.js",
+    "tts.mjs",
+    "cordis.patch.yml",
+    "README.md",
+    "docs",
+    "icon.svg",
+    "LICENSE"
+  ],
+  "keywords": [
+    "dsh",
+    "dsh-plugin",
+    "voice",
+    "speech-to-text",
+    "tts",
+    "whisper",
+    "edge-tts"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "msedge-tts": "^2.1.1"
+  }
+}
