@@ -5,6 +5,10 @@
 import { promises as fs } from 'node:fs';
 import { existsSync, statSync, renameSync } from 'node:fs';
 import { synthesize as ttsLocal, catalog as ttsCatalog, available as ttsAvailable } from './tts.mjs';
+import {
+  checkWhisperUpdates, applyFasterWhisperUpdate, applyModelUpdate,
+  resolveModelRepo, hfCacheDir,
+} from './whisper-update.mjs';
 import os from 'node:os';
 import path from 'node:path';
 import { spawn } from 'node:child_process';
@@ -41,6 +45,24 @@ const FFMPEG = resolveFfmpeg();
 const TTS_BRIDGE = process.env.VOICE_TUTOR_TTS || 'http://127.0.0.1:8788/v1/audio/speech';
 const ASR_URL = process.env.VOICE_TUTOR_ASR || 'http://127.0.0.1:8789/v1/audio/transcriptions';
 const ASR_HEALTH = ASR_URL.replace(/\/v1\/audio\/transcriptions$/, '/health');
+const ASR_PORT = (() => {
+  try {
+    const u = new URL(ASR_URL);
+    return Number(u.port) || (u.protocol === 'https:' ? 443 : 80);
+  } catch { return 8789; }
+})();
+const ASR_LOCAL = (() => {
+  try {
+    const u = new URL(ASR_URL);
+    return u.hostname === '127.0.0.1' || u.hostname === 'localhost' || u.hostname === '::1';
+  } catch { return false; }
+})();
+// 本地 ASR 桥的 venv python 与 server.py；都可用环境变量覆盖
+const VENV_PYTHON = process.env.VOICE_TUTOR_PY
+  || path.join(HOME, 'tools', 'fw', '.venv', ...(process.platform === 'win32' ? ['Scripts', 'python.exe'] : ['bin', 'python']));
+const ASR_SERVER = process.env.VOICE_TUTOR_ASR_SERVER || path.join(HOME, 'tools', 'asr-bridge', 'server.py');
+const WHISPER_REPO = resolveModelRepo();
+const HF_CACHE = hfCacheDir();
 
 const LOG = process.env.VOICE_TUTOR_LOG || path.join(DSH_DIR, 'voice-tutor.log');
 const INPUT_FILE = process.env.VOICE_TUTOR_INPUT || path.join(DSH_DIR, 'voice-tutor-last-input.json');
@@ -50,6 +72,12 @@ const CONFIG_FILE = process.env.VOICE_TUTOR_CONFIG || path.join(DSH_DIR, 'voice-
 const defaultConfig = () => ({
   asr: { url: '', key: '', model: '' },      // POST {url}，multipart 字段 file + model
   tts: { url: '', key: '', model: '', voice: '' },  // POST {url}，JSON {model, input, voice}
+  whisperUpdate: {                          // 本地 Whisper 自动更新检查（持久化）
+    enabled: true,
+    intervalHours: 24,
+    lastCheckAt: '',
+    lastResult: null,
+  },
 });
 let config = defaultConfig();
 const log = (...args) => {
@@ -69,11 +97,17 @@ async function loadConfig() {
     config = { ...defaultConfig(), ...j };
     config.asr = { ...defaultConfig().asr, ...(j.asr || {}) };
     config.tts = { ...defaultConfig().tts, ...(j.tts || {}) };
+    config.whisperUpdate = { ...defaultConfig().whisperUpdate, ...(j.whisperUpdate || {}) };
   } catch { /* 没配置文件就用默认 */ }
 }
-const saveConfig = async () => {
-  await fs.mkdir(path.dirname(CONFIG_FILE), { recursive: true }).catch(() => {});
-  await fs.writeFile(CONFIG_FILE, JSON.stringify(config, null, 2));
+// 串行写配置，避免「检查结果」和「设置页保存」同时写导致互相覆盖
+let saveChain = Promise.resolve();
+const saveConfig = () => {
+  saveChain = saveChain.then(async () => {
+    await fs.mkdir(path.dirname(CONFIG_FILE), { recursive: true }).catch(() => {});
+    await fs.writeFile(CONFIG_FILE, JSON.stringify(config, null, 2));
+  }).catch((e) => log('config-save-fail', String(e && e.message || e)));
+  return saveChain;
 };
 
 // 外接 ASR：OpenAI 兼容 /v1/audio/transcriptions（multipart）
@@ -286,8 +320,7 @@ export function apply(ctx) {
   const web = ctx.get('webServer');
   const speech = ctx.get('speechToText');
   llmService = ctx.get('llm') || null;
-  loadConfig().catch(() => {});
-  if (!web) return;
+  if (!web) { loadConfig().catch(() => {}); return; }
 
   log('apply', 'llm=', !!llmService, 'web=', !!web, 'speech=', !!speech);
 
@@ -328,6 +361,139 @@ export function apply(ctx) {
     });
     if (!res.ok) throw new Error('TTS ' + res.status);
     return Buffer.from(await res.arrayBuffer());
+  };
+
+  // ---- 本地 Whisper 更新检查（faster-whisper 包 + 模型 revision）----
+  let wuTimer = null;
+  let wuChecking = false;
+  let wuJob = null;
+
+  const wuCfg = () => ((config.whisperUpdate && typeof config.whisperUpdate === 'object')
+    ? config.whisperUpdate : defaultConfig().whisperUpdate);
+
+  const whisperStatus = () => {
+    const c = wuCfg();
+    return {
+      enabled: c.enabled !== false,
+      intervalHours: Number(c.intervalHours) || 24,
+      lastCheckAt: c.lastCheckAt || '',
+      result: c.lastResult || null,
+      checking: wuChecking,
+      job: wuJob,
+      local: ASR_LOCAL,
+      repo: WHISPER_REPO,
+      python: VENV_PYTHON,
+      cacheDir: HF_CACHE,
+      model: path.join(HF_CACHE, 'models--' + WHISPER_REPO.replace(/\//g, '--')),
+    };
+  };
+
+  const persistWhisper = async (patch) => {
+    config.whisperUpdate = { ...defaultConfig().whisperUpdate, ...wuCfg(), ...(patch || {}) };
+    try { await saveConfig(); } catch (e) { log('wu-save-fail', String(e && e.message || e)); }
+  };
+
+  const runWhisperCheck = async (trigger) => {
+    if (wuChecking) return null;
+    wuChecking = true;
+    const t0 = Date.now();
+    try {
+      const result = await checkWhisperUpdates({
+        venvPython: VENV_PYTHON,
+        repo: WHISPER_REPO,
+        cacheDir: HF_CACHE,
+        timeoutMs: 8000,
+      });
+      result.trigger = trigger;
+      await persistWhisper({ lastCheckAt: result.checkedAt, lastResult: result });
+      log('wu-check', trigger,
+        'fw=', String(result.fastwhisper.installed || '?'), '->', String(result.fastwhisper.latest || '?'),
+        'model=', String(result.model.localRevision || '').slice(0, 8), '->', String(result.model.remoteRevision || '').slice(0, 8),
+        'update=', result.hasUpdate, 'ms=', Date.now() - t0);
+      return result;
+    } catch (e) {
+      log('wu-check-fail', trigger, String(e && e.message || e));
+      return null;
+    } finally {
+      wuChecking = false;
+    }
+  };
+
+  const wuIntervalMs = () => Math.max(1, Number(wuCfg().intervalHours) || 24) * 3600 * 1000;
+
+  const scheduleWhisperWatch = (delayMs) => {
+    if (wuTimer) clearTimeout(wuTimer);
+    wuTimer = null;
+    if (wuCfg().enabled === false) return;
+    wuTimer = setTimeout(async () => {
+      wuTimer = null;
+      if (wuCfg().enabled !== false) await runWhisperCheck('auto');
+      scheduleWhisperWatch(wuIntervalMs());
+    }, Math.max(1000, Number(delayMs) || 1000));
+  };
+
+  const startWhisperApply = (target) => {
+    if (!ASR_LOCAL) throw new Error('当前识别地址不是本机 ASR 桥，无法自动更新');
+    if (wuJob && !wuJob.done) throw new Error('已有更新任务进行中，请稍候');
+    const job = {
+      target, done: false, ok: false, phase: '准备中…', percent: null,
+      startedAt: new Date().toISOString(), finishedAt: '', error: '',
+    };
+    wuJob = job;
+    const onProgress = (phase, percent) => {
+      if (phase) job.phase = String(phase);
+      if (percent !== null && percent !== undefined && Number.isFinite(Number(percent))) {
+        job.percent = Math.max(0, Math.min(100, Math.round(Number(percent))));
+      }
+      log('wu-apply', target, job.phase, job.percent == null ? '' : job.percent + '%');
+    };
+    (async () => {
+      try {
+        if (target === 'fastwhisper') {
+          const prev = (wuCfg().lastResult && wuCfg().lastResult.fastwhisper
+            && wuCfg().lastResult.fastwhisper.installed) || '';
+          const out = await applyFasterWhisperUpdate({
+            venvPython: VENV_PYTHON, serverPy: ASR_SERVER, port: ASR_PORT,
+            asrHealth: ASR_HEALTH, transcribeUrl: ASR_URL,
+            previousVersion: prev, onProgress,
+          });
+          job.phase = 'faster-whisper 已更新到 ' + (out.version || '新版本') + '，本地识别桥已重启';
+        } else if (target === 'model') {
+          const r = wuCfg().lastResult || {};
+          const md = r.model || {};
+          let remote = md.remoteRevision || '';
+          let size = Number(md.sizeBytes) || 0;
+          let repo = md.repo || WHISPER_REPO;
+          if (!remote) {
+            onProgress('先检查一次远程版本…');
+            const fresh = await runWhisperCheck('apply');
+            remote = (fresh && fresh.model.remoteRevision) || '';
+            size = Number(fresh && fresh.model.sizeBytes) || 0;
+            repo = (fresh && fresh.model.repo) || repo;
+          }
+          if (!remote) throw new Error('拿不到远程模型版本，请先点「立即检查」');
+          const out = await applyModelUpdate({
+            venvPython: VENV_PYTHON, repo, revision: remote, cacheDir: HF_CACHE,
+            sizeBytes: size, serverPy: ASR_SERVER, port: ASR_PORT,
+            asrHealth: ASR_HEALTH, transcribeUrl: ASR_URL,
+            previousRevision: md.localRevision || '', onProgress,
+          });
+          job.phase = '模型已更新到 ' + String(out.revision || '').slice(0, 8) + '，本地识别桥已重启';
+        } else {
+          throw new Error('未知的更新目标');
+        }
+        job.ok = true;
+      } catch (e) {
+        job.error = String(e && e.message || e);
+        job.phase = '更新失败';
+        log('wu-apply-fail', target, job.error);
+      } finally {
+        job.done = true;
+        job.finishedAt = new Date().toISOString();
+        runWhisperCheck('after-apply').catch(() => {});
+      }
+    })();
+    return job;
   };
 
   // 我这条回复说完 → 合成音频排队
@@ -535,19 +701,59 @@ export function apply(ctx) {
       if (req.method === 'POST') {
         try {
           const b = JSON.parse((await readBody(req, 65536)).toString('utf8') || '{}');
+          if (b.whisperUpdate && b.whisperUpdate.intervalHours !== undefined) {
+            const h = Number(b.whisperUpdate.intervalHours);
+            if (!Number.isFinite(h) || h < 1 || h > 168) {
+              return json(res, 400, { error: '检查间隔必须是 1-168 小时' });
+            }
+          }
+          // 只覆盖本次提交的字段，别把已有的外接接口或上次检查结果清空
           const d = defaultConfig();
+          const base = config || d;
           config = {
-            asr: { ...d.asr, ...(b.asr || {}) },
-            tts: { ...d.tts, ...(b.tts || {}) },
+            asr: { ...d.asr, ...(base.asr || {}), ...(b.asr || {}) },
+            tts: { ...d.tts, ...(base.tts || {}), ...(b.tts || {}) },
+            whisperUpdate: { ...d.whisperUpdate, ...(base.whisperUpdate || {}), ...(b.whisperUpdate || {}) },
           };
           await saveConfig();
-          log('config-saved', 'asr=', !!config.asr.url, 'tts=', !!config.tts.url);
+          log('config-saved', 'asr=', !!config.asr.url, 'tts=', !!config.tts.url,
+            'wu=', config.whisperUpdate.enabled !== false, 'interval=', config.whisperUpdate.intervalHours);
+          if (b.whisperUpdate) {
+            scheduleWhisperWatch(config.whisperUpdate.lastResult ? wuIntervalMs() : 2000);
+          }
           return json(res, 200, { ok: true, config });
         } catch (e) {
           return json(res, 400, { error: String(e && e.message || e) });
         }
       }
       return json(res, 405, { error: 'GET or POST' });
+    }
+
+    if (p === '/voice-tutor/whisper-update') {
+      if (req.method !== 'GET') return json(res, 405, { error: 'GET only' });
+      return json(res, 200, { ok: true, ...whisperStatus() });
+    }
+
+    if (p === '/voice-tutor/whisper-update/check') {
+      if (req.method !== 'POST') return json(res, 405, { error: 'POST only' });
+      await runWhisperCheck('manual');
+      return json(res, 200, { ok: true, ...whisperStatus() });
+    }
+
+    if (p === '/voice-tutor/whisper-update/apply') {
+      if (req.method !== 'POST') return json(res, 405, { error: 'POST only' });
+      try {
+        const b = JSON.parse((await readBody(req, 65536)).toString('utf8') || '{}');
+        if (b.confirm !== true) return json(res, 400, { error: '需要二次确认（confirm: true）' });
+        const target = String(b.target || '');
+        if (target !== 'fastwhisper' && target !== 'model') {
+          return json(res, 400, { error: 'target 只能是 fastwhisper 或 model' });
+        }
+        const job = startWhisperApply(target);
+        return json(res, 200, { ok: true, job });
+      } catch (e) {
+        return json(res, 400, { error: String(e && e.message || e) });
+      }
     }
 
     if (p === '/voice-tutor/open') {
@@ -629,4 +835,11 @@ export function apply(ctx) {
   };
 
   ctx.effect(() => web.register({ kind: 'prefix', path: '/voice-tutor', handler }), 'voice-tutor: routes');
+
+  // 启动后延迟几十秒做首次检查（不阻塞 apply / 语音主流程），之后按间隔定时检查
+  loadConfig().then(() => scheduleWhisperWatch(40000)).catch(() => scheduleWhisperWatch(40000));
+  ctx.effect(() => () => {
+    if (wuTimer) clearTimeout(wuTimer);
+    wuTimer = null;
+  }, 'voice-tutor: whisper watcher');
 }

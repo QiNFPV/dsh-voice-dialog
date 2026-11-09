@@ -1,0 +1,80 @@
+DSH 语音对话 · v0.1.2 · 本地安装说明
+=====================================
+
+语言：本文件是简体中文版；英文版见 install-notes.en.txt。
+版本：0.1.2（包含 0.1.1 的全部启动修复，并新增本地 Whisper 更新检查）
+
+本版包含什么
+------------
+· 连续语音对话：点一次麦克风，之后正常说话即可
+· 自动断句、2 秒确认窗口、回复朗读、开口打断、10 秒空闲自动退出
+· 新增「本地 Whisper 自动更新检查」：可检查 faster-whisper 包和模型 revision，
+  有新版时在语音按钮旁提示，并可在设置页里确认后更新
+· 完整包含 0.1.1 的启动修复（0.1.0 在 DSH 0.2.x 上会导致整个 Web 前端启动失败）：
+  1) 客户端注册 id 与包名一致（dsh-voice-dialog）
+  2) dsh.client.inject 清空（客户端只依赖加载器内建的 react）
+  3) 路径改为 os.homedir() + path.join()，ffmpeg 候选按平台选择
+
+要求
+----
+· DSH 桌面版 0.2.x，能正常启动
+· 默认不需要 Python、不需要 ffmpeg、不需要额外服务
+· 朗读走微软 Edge TTS，需要能访问 speech.platform.bing.com
+· 本地 Whisper 更新检查只对「本机 ASR 桥」有意义，默认假定：
+  - Python: %USERPROFILE%\tools\fw\.venv\Scripts\python.exe
+  - 桥:     %USERPROFILE%\tools\asr-bridge\server.py
+  - 端口:   127.0.0.1:8789
+  目录不同可用 VOICE_TUTOR_PY / VOICE_TUTOR_ASR_SERVER 指定。
+
+一、安装
+--------
+方式 A（推荐，让 DSH 自己装）：
+  把 dsh-voice-dialog-0.1.2.tgz 放到固定位置（不要放 /tmp 或 %TEMP%），
+  然后在 DSH 的插件管理器里选择从文件安装。
+
+方式 B（命令行）：
+  dsh plugin --profile desktop add /path/to/dsh-voice-dialog-0.1.2.tgz
+  然后把 "dsh-voice-dialog" 加入 profile 的 dsh.profile.bundles，完全退出 DSH 再打开。
+
+手动复制：
+  解压本 tgz 到 ~/.dsh/profiles/<profile>/node_modules/dsh-voice-dialog/，重启 DSH。
+  不要把别的机器上的 node_modules 直接复制过来。
+
+二、怎么用
+----------
+1. 点输入框左侧的麦克风（变红表示进入语音模式）
+2. 正常说话，停顿约 1.2 秒自动断句
+3. 文字先进输入框，2 秒后自动发送
+   · 这 2 秒内按任意键或点一下输入框，就会暂停发送，改完回车
+4. 回复会自动朗读；朗读时开口说话可以打断
+5. 10 秒没说话自动退出
+
+三、设置
+--------
+设置 → 插件 → 语音对话
+  · 语言勾选：决定输入框旁边下拉里的语言（默认 自动/中文/English/日本語）
+  · 自动纠错：修正错字（含长数字的句子跳过，避免改错号码）
+  · 本地 Whisper 更新检查：
+      自动检查开关（默认开）、检查间隔（6/12/24/72 小时）、立即检查
+      状态区显示上次检查、faster-whisper 当前/最新版本、模型本地/远程 revision、是否有更新
+      有更新时可用「更新 faster-whisper」或「下载新模型」，都需要二次确认
+  · 外接接口：可选，填 OpenAI 兼容的识别/合成地址与密钥，留空即用内置
+
+四、语音会话模式（注意事项）
+----------------------------
+用语音对话时（点麦克风进入的录音会话，或语音通话专属会话），助手的回复会被朗读，
+因此回复会被压成极短的一两句：不列清单、不复述前文。
+这是会话级行为，不是插件 bug。如果是在打字讨论，建议新开一个普通会话，或关掉语音模式再聊。
+
+五、日志与排错
+--------------
+· 日志：~/.dsh/voice-tutor.log
+· 配置：~/.dsh/voice-tutor-config.json
+· 上次输入方式：~/.dsh/voice-tutor-last-input.json
+· 点了没反应 → 看日志与麦克风权限
+· 识别为空 → 声音太小或时长太短
+· 没声音 → 检查能否访问微软 Edge TTS；识别不受影响
+· Whisper 更新失败 → 看日志里的 wu-apply / pip / 重启错误和回滚结果；
+  旧模型缓存不会被删除
+
+版本 0.1.2 · MIT License · 上游 https://github.com/QiNFPV/dsh-voice-dialog

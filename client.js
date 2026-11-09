@@ -120,6 +120,205 @@ window.__ModuleLoader__.load({
     const go = (s) => { E.state = s; E.lastActive = Date.now(); emit(); };
     const note = (t) => { E.note = t; emit(); };
 
+    // ---------- 本地 Whisper 更新状态 ----------
+    let wuStatus = null;
+    let wuLoading = false;
+    let wuLastLoad = 0;
+    let wuPoll = 0;
+
+    const fmtBytes = (n) => {
+      const v = Number(n);
+      if (!Number.isFinite(v) || v <= 0) return '';
+      const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+      let x = v; let i = 0;
+      while (x >= 1024 && i < units.length - 1) { x /= 1024; i += 1; }
+      return (x >= 10 || i === 0 ? Math.round(x) : x.toFixed(1)) + ' ' + units[i];
+    };
+    const shortRev = (r) => String(r || '').slice(0, 8);
+    const fmtTime = (iso) => {
+      if (!iso) return '从未检查';
+      const d = new Date(iso);
+      return Number.isNaN(d.getTime()) ? String(iso) : d.toLocaleString();
+    };
+    const wuBadgeText = () => {
+      const r = wuStatus && wuStatus.result;
+      if (!r || !r.hasUpdate) return '';
+      const parts = [];
+      if (r.fastwhisper && r.fastwhisper.hasUpdate) parts.push('Whisper 有新版 ' + (r.fastwhisper.latest || ''));
+      if (r.model && r.model.hasUpdate) parts.push('模型有新版');
+      return parts.join(' · ');
+    };
+    const loadWu = (force) => {
+      if (wuLoading) return;
+      if (!force && Date.now() - wuLastLoad < 4000) return;
+      wuLoading = true;
+      fetch('/voice-tutor/whisper-update', { cache: 'no-store' })
+        .then((r) => (r.ok ? r.json() : null))
+        .then((d) => { if (d && d.ok) { wuStatus = d; wuLastLoad = Date.now(); } })
+        .catch(() => {})
+        .finally(() => { wuLoading = false; emit(); });
+    };
+    const startWuPolling = () => {
+      if (wuPoll) return;
+      wuPoll = setInterval(() => {
+        loadWu(true);
+        const job = wuStatus && wuStatus.job;
+        if (job && job.done) { clearInterval(wuPoll); wuPoll = 0; }
+      }, 1500);
+    };
+    const stopWuPolling = () => { if (wuPoll) { clearInterval(wuPoll); wuPoll = 0; } };
+
+    const checkWhisperNow = async (btn) => {
+      if (btn) { btn.disabled = true; btn.textContent = '检查中…'; }
+      try {
+        const r = await fetch('/voice-tutor/whisper-update/check', { method: 'POST' });
+        const d = await r.json().catch(() => ({}));
+        if (!r.ok) throw new Error(d.error || ('HTTP ' + r.status));
+        if (d.ok) wuStatus = d;
+        emit();
+        return d;
+      } catch (e) {
+        note('Whisper 检查失败：' + String(e && e.message || e));
+        return null;
+      } finally {
+        if (btn) { btn.disabled = false; btn.textContent = '立即检查'; }
+      }
+    };
+
+    // 更新动作：二次确认（confirm）后才向后端发 confirm: true
+    const applyWhisper = async (target) => {
+      const r = (wuStatus && wuStatus.result) || {};
+      if (target === 'fastwhisper') {
+        const ok = window.confirm('确定更新 faster-whisper 吗？\n\n'
+          + '将执行：venv python -m pip install -U faster-whisper\n'
+          + '然后重启 127.0.0.1:8789 上的本地识别桥，等待 /health 就绪。\n'
+          + '失败会自动尝试回滚到当前版本。');
+        if (!ok) return;
+      } else {
+        const size = fmtBytes(r.model && r.model.sizeBytes);
+        const ok = window.confirm('确定下载新模型吗？'
+          + (size ? '\n\n体积约 ' + size + '。' : '')
+          + '\n下载完成后会重启本地识别桥；旧缓存不会删除，失败可回滚。');
+        if (!ok) return;
+      }
+      try {
+        const resp = await fetch('/voice-tutor/whisper-update/apply', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ target, confirm: true }),
+        });
+        const d = await resp.json().catch(() => ({}));
+        if (!resp.ok) throw new Error(d.error || ('HTTP ' + resp.status));
+        note(target === 'fastwhisper' ? '正在更新 faster-whisper…' : '正在下载模型…');
+        loadWu(true);
+        startWuPolling();
+      } catch (e) {
+        window.alert('更新启动失败：' + String(e && e.message || e));
+      }
+    };
+
+    // 语音按钮旁边的小提示，点击打开详情/更新面板（纯 DOM，避免额外 React 状态）
+    const closeWhisperDialog = () => {
+      const el = document.getElementById('vt-wu-dialog');
+      if (!el) return;
+      if (el._vtTimer) clearInterval(el._vtTimer);
+      el.remove();
+    };
+
+    const openWhisperDialog = () => {
+      closeWhisperDialog();
+      loadWu(true);
+      const wrap = document.createElement('div');
+      wrap.id = 'vt-wu-dialog';
+      wrap.style.cssText = 'position:fixed;inset:0;z-index:99998;background:rgba(0,0,0,.38);'
+        + 'display:flex;align-items:center;justify-content:center;';
+      const box = document.createElement('div');
+      box.style.cssText = 'width:min(580px,92vw);max-height:82vh;overflow:auto;'
+        + 'background:var(--dsw-alias-bg-layer-3,#242424);border:1px solid var(--dsw-alias-border-l2,#444);'
+        + 'border-radius:12px;padding:16px 18px;color:var(--dsw-alias-label-primary,#ddd);'
+        + 'font-size:12px;line-height:1.7;box-shadow:0 18px 50px rgba(0,0,0,.5);';
+      wrap.appendChild(box);
+      wrap.onclick = (ev) => { if (ev.target === wrap) closeWhisperDialog(); };
+      document.body.appendChild(wrap);
+
+      const el = (tag, style, text) => {
+        const n = document.createElement(tag);
+        if (style) n.style.cssText = style;
+        if (text !== undefined) n.textContent = text;
+        return n;
+      };
+      const line = (k, v, color) => {
+        const row = el('div', 'display:flex;gap:8px;align-items:baseline;');
+        row.appendChild(el('span', 'width:92px;flex:none;opacity:.55;', k));
+        const val = el('span', 'flex:1;word-break:break-all;' + (color ? 'color:' + color + ';' : ''), v);
+        row.appendChild(val);
+        return row;
+      };
+
+      function render() {
+        const st = wuStatus;
+        const r = (st && st.result) || null;
+        const fw = (r && r.fastwhisper) || {};
+        const md = (r && r.model) || {};
+        const job = st && st.job;
+        box.textContent = '';
+
+        box.appendChild(el('div', 'font-size:15px;font-weight:600;margin-bottom:2px;', '本地 Whisper 更新'));
+        box.appendChild(el('div', 'font-size:11px;opacity:.5;margin-bottom:10px;',
+          st ? ('自动检查：' + (st.enabled ? '开' : '关') + ' · 每 ' + (st.intervalHours || 24) + ' 小时')
+            : '宿主暂未响应（宿主侧改动需要重启 DSH 后生效）'));
+
+        const body = el('div', 'display:flex;flex-direction:column;gap:4px;');
+        body.appendChild(line('上次检查', fmtTime(st && st.lastCheckAt)));
+        body.appendChild(line('faster-whisper',
+          (fw.installed || '未知') + ' → ' + (fw.latest || '未知') + ' · '
+          + (fw.hasUpdate ? '有新版' : (fw.installed && fw.latest ? '已是最新' : '未知')),
+          fw.hasUpdate ? '#f5b544' : ''));
+        body.appendChild(line('模型',
+          (md.repo || '') + ' · 本地 ' + (shortRev(md.localRevision) || '—')
+          + ' · 远程 ' + (shortRev(md.remoteRevision) || '—') + ' · '
+          + (md.hasUpdate ? '有新版' : (md.localRevision && md.remoteRevision ? '已是最新' : '未知')),
+          md.hasUpdate ? '#f5b544' : ''));
+        if (md.sizeBytes) body.appendChild(line('模型体积', fmtBytes(md.sizeBytes)));
+        if (r && r.errors && r.errors.length) {
+          body.appendChild(line('提示', r.errors.slice(0, 2).join('；'), '#f59e0b'));
+        }
+        if (job) {
+          body.appendChild(line('更新任务',
+            (job.phase || '') + (job.percent !== null && job.percent !== undefined ? ' ' + job.percent + '%' : '')
+            + (job.error ? ' × ' + job.error : ''),
+            job.error ? '#ef4444' : ''));
+        }
+        box.appendChild(body);
+
+        const row = el('div', 'display:flex;gap:8px;margin-top:14px;flex-wrap:wrap;align-items:center;');
+        const btnStyle = 'height:28px;padding:0 12px;border-radius:8px;cursor:pointer;font-size:12px;'
+          + 'border:1px solid var(--dsw-alias-border-l2,#444);background:transparent;color:inherit;';
+        const mkBtn = (label, onclick, accent) => {
+          const b = el('button', btnStyle + (accent ? 'border-color:#f5b544;color:#f5b544;' : ''), label);
+          b.type = 'button';
+          b.onclick = onclick;
+          return b;
+        };
+        const checkBtn = mkBtn('立即检查', () => checkWhisperNow(checkBtn));
+        row.appendChild(checkBtn);
+        if (r && fw.hasUpdate) {
+          row.appendChild(mkBtn('更新 faster-whisper', () => applyWhisper('fastwhisper'), true));
+        }
+        if (r && md.hasUpdate) {
+          row.appendChild(mkBtn('下载新模型', () => applyWhisper('model'), true));
+        }
+        row.appendChild(mkBtn('关闭', () => closeWhisperDialog()));
+        box.appendChild(row);
+      }
+
+      render();
+      wrap._vtTimer = setInterval(() => {
+        loadWu(true);
+        render();
+      }, 1500);
+    };
+
     // ---------- 与宿主通信 ----------
     const arm = () => {
       const p = E.props || {};
@@ -439,7 +638,9 @@ window.__ModuleLoader__.load({
         const f = () => force((x) => x + 1);
         E.listeners.add(f);
         ensureVoices();
-        return () => { E.listeners.delete(f); };
+        loadWu();
+        const wuT = setInterval(() => loadWu(), 60000);
+        return () => { E.listeners.delete(f); clearInterval(wuT); };
       }, []);
 
       const on = E.state !== 'off';
@@ -523,6 +724,16 @@ window.__ModuleLoader__.load({
             ? h('span', { style: { fontSize: 11, opacity: .6, fontVariantNumeric: 'tabular-nums' } },
                 E.level.toFixed(3))
             : null),
+        wuBadgeText() ? h('button', {
+          type: 'button',
+          title: '本地 Whisper / 模型有新版，点击查看并更新',
+          onClick: () => openWhisperDialog(),
+          style: {
+            height: 28, padding: '0 9px', borderRadius: 999, cursor: 'pointer', fontSize: 11,
+            border: '1px solid rgba(245,158,11,.55)', background: 'rgba(245,158,11,.14)',
+            color: '#f5b544', whiteSpace: 'nowrap',
+          },
+        }, '⬆ ' + wuBadgeText()) : null,
         E.note ? h('span', {
           style: { fontSize: 12, color: 'var(--dsw-alias-label-tertiary,#888)', maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
         }, E.note) : null);
@@ -581,6 +792,164 @@ window.__ModuleLoader__.load({
           }, '保存'),
           h('span', { style: { ...hint, opacity: .7 } }, msg || '留空则用内置 Edge TTS 与本地识别')),
       );
+    }
+
+    // ---------- 设置页：本地 Whisper 更新检查 ----------
+    function WhisperSettings() {
+      const [cfg, setCfg] = React.useState(null);
+      const [st, setSt] = React.useState(null);
+      const [msg, setMsg] = React.useState('');
+      const [busy, setBusy] = React.useState(false);
+
+      const getJson = async (u, opt) => {
+        const r = await fetch(u, opt);
+        const d = await r.json().catch(() => ({}));
+        if (!r.ok) throw new Error(d.error || ('HTTP ' + r.status));
+        return d;
+      };
+      const load = async () => {
+        try {
+          const [c, s] = await Promise.all([
+            getJson('/voice-tutor/config', { cache: 'no-store' }),
+            getJson('/voice-tutor/whisper-update', { cache: 'no-store' }),
+          ]);
+          const w = c.whisperUpdate || {};
+          setCfg({ enabled: w.enabled !== false, intervalHours: Number(w.intervalHours) || 24 });
+          setSt(s);
+        } catch {
+          setSt(null);   // 宿主侧路由需要重启 DSH 后才存在
+        }
+      };
+      React.useEffect(() => {
+        load();
+        const t = setInterval(load, 4000);
+        return () => clearInterval(t);
+      }, []);
+
+      const save = async (patch) => {
+        const next = { ...(cfg || { enabled: true, intervalHours: 24 }), ...patch };
+        setCfg(next);
+        try {
+          await getJson('/voice-tutor/config', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ whisperUpdate: { enabled: next.enabled, intervalHours: Number(next.intervalHours) || 24 } }),
+          });
+          setMsg('已保存');
+          setTimeout(() => setMsg(''), 2000);
+          load();
+        } catch (e) {
+          setMsg('保存失败：' + String(e && e.message || e));
+        }
+      };
+
+      const checkNow = async () => {
+        setBusy(true);
+        setMsg('检查中…');
+        try {
+          const d = await getJson('/voice-tutor/whisper-update/check', { method: 'POST' });
+          setSt(d);
+          setMsg('检查完成');
+        } catch (e) {
+          setMsg('检查失败：' + String(e && e.message || e));
+        } finally {
+          setBusy(false);
+          setTimeout(() => setMsg(''), 3000);
+        }
+      };
+
+      if (!cfg) return null;
+      const w = (st && st.result) || null;
+      const fw = (w && w.fastwhisper) || {};
+      const md = (w && w.model) || {};
+      const job = st && st.job;
+      const row = { display: 'flex', alignItems: 'center', gap: 10, fontSize: 13, flexWrap: 'wrap' };
+      const hint = { fontSize: 11, opacity: .55, lineHeight: '17px' };
+      const box = {
+        display: 'flex', flexDirection: 'column', gap: 4, padding: '10px 12px',
+        border: '1px solid var(--dsw-alias-border-l2,#333)', borderRadius: 8, fontSize: 12, lineHeight: '19px',
+      };
+      const line = (k, v, color) => h('div', { style: { display: 'flex', gap: 8 } },
+        h('span', { style: { width: 92, flex: 'none', opacity: .55 } }, k),
+        h('span', { style: { flex: 1, wordBreak: 'break-all', color: color || 'inherit' } }, v));
+      const btnStyle = {
+        height: 28, padding: '0 12px', borderRadius: 8, cursor: 'pointer', fontSize: 12,
+        border: '1px solid var(--dsw-alias-border-l2,#444)', background: 'transparent', color: 'inherit',
+      };
+      const apply = async (target) => {
+        const ok = target === 'fastwhisper'
+          ? window.confirm('确定更新 faster-whisper 吗？\n\n将执行 venv python -m pip install -U faster-whisper，'
+            + '并重启 127.0.0.1:8789 上的本地识别桥；失败会尝试回滚。')
+          : window.confirm('确定下载新模型吗？'
+            + (md.sizeBytes ? '\n体积约 ' + fmtBytes(md.sizeBytes) + '。' : '')
+            + '\n下载完成后重启本地识别桥，旧缓存不会删除，失败可回滚。');
+        if (!ok) return;
+        setBusy(true);
+        try {
+          await getJson('/voice-tutor/whisper-update/apply', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ target, confirm: true }),
+          });
+          setMsg('更新任务已开始');
+          load();
+        } catch (e) {
+          setMsg('更新启动失败：' + String(e && e.message || e));
+        } finally {
+          setBusy(false);
+        }
+      };
+
+      const status = st
+        ? ('自动检查：' + (st.enabled ? '开' : '关') + ' · 每 ' + (st.intervalHours || 24) + ' 小时')
+        : '宿主侧尚未响应：宿主改动需重启 DSH 后生效';
+      return h('div', {
+        style: { display: 'flex', flexDirection: 'column', gap: 8, paddingTop: 12, borderTop: '1px solid var(--dsw-alias-border-l2,#333)' },
+      },
+        h('div', { style: { fontSize: 13, opacity: .85 } }, '本地 Whisper 更新检查'),
+        h('div', { style: hint }, '检查 PyPI 上的 faster-whisper 版本和 HuggingFace 上的模型 revision；离线或出错会静默跳过，不影响语音功能。'),
+        h('label', { style: { ...row, cursor: 'pointer' } },
+          h('input', {
+            type: 'checkbox', checked: cfg.enabled !== false,
+            onChange: () => save({ enabled: cfg.enabled === false }),
+          }),
+          h('span', null, '自动检查本地 Whisper 更新')),
+        h('div', { style: row },
+          h('span', { style: { ...hint, width: 96 } }, '检查间隔'),
+          h('select', {
+            value: Number(cfg.intervalHours) || 24,
+            style: {
+              height: 30, minWidth: 140, borderRadius: 8, padding: '0 8px', fontSize: 13,
+              border: '1px solid var(--dsw-alias-border-l2,#444)',
+              background: 'var(--dsw-alias-bg-layer-2,transparent)', color: 'inherit',
+            },
+            onChange: (e) => save({ intervalHours: Number(e.target.value) }),
+          }, [6, 12, 24, 72].map((n) => h('option', { key: n, value: n }, '每 ' + n + ' 小时')))),
+        h('div', { style: row },
+          h('button', { type: 'button', style: btnStyle, disabled: busy, onClick: checkNow },
+            busy ? '请稍候…' : '立即检查'),
+          h('span', { style: { ...hint, opacity: .7 } }, msg || status)),
+        h('div', { style: box },
+          line('上次检查', fmtTime(st && st.lastCheckAt)),
+          line('faster-whisper', (fw.installed || '未知') + ' → 最新 ' + (fw.latest || '未知') + ' · '
+            + (fw.hasUpdate ? '有新版' : (fw.installed && fw.latest ? '已是最新' : '未知')),
+            fw.hasUpdate ? '#f5b544' : ''),
+          line('模型', (md.repo || '—') + ' · 本地 ' + (shortRev(md.localRevision) || '—')
+            + ' · 远程 ' + (shortRev(md.remoteRevision) || '—') + ' · '
+            + (md.hasUpdate ? '有新版' : (md.localRevision && md.remoteRevision ? '已是最新' : '未知')),
+            md.hasUpdate ? '#f5b544' : ''),
+          md.sizeBytes ? line('模型体积', fmtBytes(md.sizeBytes)) : null,
+          w && w.errors && w.errors.length ? line('提示', w.errors.slice(0, 2).join('；'), '#f59e0b') : null,
+          job ? line('更新任务', (job.phase || '')
+            + (job.percent !== null && job.percent !== undefined ? ' ' + job.percent + '%' : '')
+            + (job.error ? ' × ' + job.error : ''), job.error ? '#ef4444' : '') : null,
+          (w && (fw.hasUpdate || md.hasUpdate)) ? h('div', { style: { ...row, marginTop: 6 } },
+            fw.hasUpdate ? h('button', {
+              type: 'button', disabled: busy, onClick: () => apply('fastwhisper'),
+              style: { ...btnStyle, borderColor: '#f5b544', color: '#f5b544' },
+            }, '更新 faster-whisper') : null,
+            md.hasUpdate ? h('button', {
+              type: 'button', disabled: busy, onClick: () => apply('model'),
+              style: { ...btnStyle, borderColor: '#f5b544', color: '#f5b544' },
+            }, '下载新模型') : null) : null));
     }
 
     // ---------- 设置面板（设置 → 插件 → 语音对话）----------
@@ -674,6 +1043,7 @@ window.__ModuleLoader__.load({
           h('span', null, '识别结果自动纠错（只改错字，数字句跳过）')),
         h('div', { style: { fontSize: 12, opacity: .55, lineHeight: '18px' } },
           '点一下输入框左侧的麦克风进入连续对话；说完停顿自动断句，文字先进输入框，2 秒后自动发送，期间按任意键或点一下即可暂停修改。'),
+        h(WhisperSettings),
         h(ExternalForm));
     }
 

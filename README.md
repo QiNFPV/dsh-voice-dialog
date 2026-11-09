@@ -1,89 +1,235 @@
-# DSH语音对话
+# DSH Voice Dialog
 
-在 DeepSeek Harness 里**一直说话**的语音对话：点一下麦克风，之后正常聊天就行。
+[English](README.md) · [简体中文](README.zh-CN.md)
 
-> 点麦克风 → 说话 → 停顿自动断句 → 2 秒后自动发送 → 回复朗读出来 → 开口即打断。
+A **continuous voice conversation** plugin for DeepSeek Harness: click the microphone once, then
+just talk. Your speech is segmented automatically, sent after a short confirmation window, and the
+assistant's reply is spoken back. Start talking while it is speaking and it stops to listen.
 
-## 主要功能
+> Click the mic → speak → a pause ends the sentence → auto-send after 2 seconds → reply is spoken →
+> speak again to interrupt.
 
-- **连续对话**：点一次进入，不用每句都按
-- **自动断句**：停顿 1.2 秒就算说完
-- **2 秒确认窗口**：文字先进输入框，不动自动发；按任意键或点一下即暂停，改完回车
-- **自动纠错**：识别错字自动修正（数字句跳过，避免改错号码）
-- **语音朗读**：按你选的语言选音色；日语回复带假名注音（朗读时自动去掉，不念两遍）
-- **可打断**：朗读时开口说话，它立刻停下听你说
-- **10 秒空闲自动退出**，不会一直占着麦克风
-- **只念语音的回复**：打字发来的消息不会出声
+## Features
 
-## 怎么用
+- **Continuous conversation** — one click to enter, no per-sentence button presses
+- **Automatic segmentation** — 1.2 s of silence ends the current sentence
+- **2-second confirmation window** — text appears in the composer first; press any key or click to
+  pause sending, edit, then press Enter
+- **Recognition cleanup** — obvious speech-recognition errors are fixed (sentences with long digit
+  strings are skipped so phone numbers / amounts are not altered)
+- **Spoken replies** — a voice is chosen for the reply language; Japanese kana annotations are
+  stripped before speaking
+- **Barge-in** — start speaking while the reply is playing and playback stops immediately
+- **Idle exit** — leaves voice mode after 10 s without speech, so the microphone is not held open
+- **Only voice-triggered replies are spoken** — messages you type stay silent
+- **Local Whisper update check** — optional; watches `faster-whisper` and the local model for new
+  versions and lets you update them from the settings page
 
-1. 点输入框左侧的**麦克风**按钮，图标变红即进入
-2. 说话；停顿后文字出现在输入框
-3. 2 秒内不动就自动发送；想改就点一下输入框或按任意键
-4. 想结束：再点一次麦克风，或等 10 秒不说话自动退出
+## Requirements
 
-输入框旁边的语言下拉只决定**朗读用哪种声音**；识别永远自动判定语言。
+- DeepSeek Harness 0.2.x (desktop/web)
+- No Python, no ffmpeg and no separate service are required for the default setup
+- Speech output uses Microsoft Edge TTS, so `speech.platform.bing.com` must be reachable
+- Optional: a local Whisper bridge (`faster-whisper`) for better recognition accuracy
 
-## 设置
+## Install
 
-**设置 → 插件 → 语音对话**
+### From the release package
 
-- **语言勾选** —— 决定下拉里出现哪些语言（自动 / 中文 / English / 日本語 默认）
-- **显示全部音色** —— 可选更多 Edge 音色
-- **自动纠错** —— 可关闭
-- **外接接口** —— 可选，填 OpenAI 兼容的识别/合成地址与密钥
+1. Download `dsh-voice-dialog-0.1.2.tgz` from
+   [Releases](https://github.com/QiNFPV/dsh-voice-dialog/releases).
+2. Put the file somewhere permanent (not `/tmp` or `%TEMP%`), then install it with the DSH plugin
+   manager (`Settings → Plugins → Install from file`).
+3. Make sure `dsh-voice-dialog` is listed in the profile's bundle list and fully restart DSH.
 
-## 依赖
+Command line equivalent:
 
-- 需要 DSH（桌面端）；识别默认用 DSH 自带的 SenseVoice
-- 朗读用内置 Edge TTS，**不需要额外安装任何服务**
-- 想更准的识别：可选装本地 Whisper（`faster-whisper`）
+```bash
+dsh plugin --profile desktop add /path/to/dsh-voice-dialog-0.1.2.tgz
+```
 
-## 常见问题
+Then add `dsh-voice-dialog` to `dsh.profile.bundles` in the profile and restart DSH.
 
-| 现象 | 处理 |
+### Manual copy
+
+Unpack the tgz into `~/.dsh/profiles/<profile>/node_modules/dsh-voice-dialog/` and restart DSH.
+Do not copy `node_modules` from another machine; install dependencies with `npm install --omit=dev`
+inside the plugin directory if needed (`ws` is the only runtime dependency).
+
+Bilingual install notes are included in the package: [`安装说明.txt`](安装说明.txt) (Chinese) and
+[`install-notes.en.txt`](install-notes.en.txt) (English).
+
+## Usage
+
+1. Click the **microphone** button to the left of the composer; it turns red when voice mode is on.
+2. Speak normally. A pause of about 1.2 s ends the sentence.
+3. The recognized text is placed in the composer and sent automatically after 2 s. Press any key or
+   click the composer to pause that timer, edit the text, then press Enter.
+4. The reply is spoken. Speak while it is playing to interrupt it.
+5. Click the microphone again, or stay silent for 10 s, to leave voice mode.
+
+The language dropdown next to the microphone only selects the **voice used for speaking**.
+Recognition always detects the language automatically.
+
+## Settings
+
+**Settings → Plugins → Voice Dialog**
+
+- **Languages in the picker** — which languages appear in the dropdown (Auto / Chinese / English /
+  Japanese by default)
+- **Show all voices (advanced)** — expose every available Edge voice
+- **Auto-correct recognition** — fix obvious errors; sentences with long digit strings are skipped
+- **External APIs (optional)** — OpenAI-compatible speech-to-text / text-to-speech endpoints and
+  keys; leave empty to use the built-in backends
+- **Local Whisper update check** — see below
+
+## Whisper auto-update check
+
+The plugin can watch the local Whisper stack and tell you when something new is available. It is
+enabled by default and never blocks voice input.
+
+Settings:
+
+| Item | Default | Meaning |
+|---|---|---|
+| Auto-check local Whisper updates | On | Turn the periodic check on/off |
+| Check interval | 24 hours | 6 / 12 / 24 / 72 hours |
+| Check now | — | Runs a check immediately and refreshes the status |
+
+The status block shows the last check time, the installed and latest `faster-whisper` versions,
+the local and remote model revisions, the model size, and whether an update exists. When an update
+is found, a small badge appears next to the microphone button; click it to inspect details and run
+the update (a second confirmation is required).
+
+What is checked:
+
+1. **`faster-whisper` package** — latest version from
+   `https://pypi.org/pypi/faster-whisper/json` compared with the version actually installed in the
+   bridge virtualenv. The installed version is read by running the venv Python
+   (`import faster_whisper; print(faster_whisper.__version__)`); if that fails, the plugin falls
+   back to `site-packages/faster_whisper/__init__.py` or the `*.dist-info` directory name, and
+   finally reports "unknown".
+2. **Model revision** — remote `sha` from
+   `https://huggingface.co/api/models/<repo>` compared with the local `refs/main` under the
+   HuggingFace hub cache. The cache root honours `HF_HOME`, `HF_HUB_CACHE`,
+   `HUGGINGFACE_HUB_CACHE` and defaults to `~/.cache/huggingface/hub`. The repository defaults to
+   `mobiuslabsgmbh/faster-whisper-large-v3-turbo` and can be overridden with `ASR_MODEL_REPO`; the
+   mapping also follows `ASR_MODEL` (`large-v3-turbo`, `large-v3`, `small`, …).
+
+All network calls time out within 8 seconds. Offline or failing checks are silent and only update
+the status text; the voice pipeline is unaffected. The first automatic check runs about 40 seconds
+after the host starts, then at the configured interval. Results are persisted in
+`~/.dsh/voice-tutor-config.json` under `whisperUpdate`.
+
+### Applying an update
+
+Updates only run after you click the button **and** confirm the dialog.
+
+- **`faster-whisper`**: runs `<venv python> -m pip install -U faster-whisper`, restarts the local
+  ASR bridge, and waits for `/health` to become ready. If the new version cannot start, the plugin
+  tries to reinstall the previous version and restart again.
+- **Model**: asks for confirmation showing the approximate download size, downloads the new
+  revision with `huggingface_hub.snapshot_download`, shows progress, then restarts the bridge. Old
+  cache snapshots are never deleted; if the new model cannot start, `refs/main` is pointed back to
+  the previous revision and the bridge is restarted again.
+
+The bridge restart only targets the process actually listening on `127.0.0.1:8789`; the plugin
+verifies that its command line contains `server.py` before killing anything. The new process is
+started with the same command (`<venv python> <asr-bridge>/server.py`). The model is loaded lazily
+by the bridge, so the plugin sends a short silent warm-up request to make `/health` report ready.
+
+Relevant environment variables: `VOICE_TUTOR_PY`, `VOICE_TUTOR_ASR_SERVER`, `VOICE_TUTOR_ASR`,
+`ASR_MODEL`, `ASR_MODEL_REPO`, `HF_HOME`, `HF_HUB_CACHE`, `HUGGINGFACE_HUB_CACHE`.
+
+## Voice session behavior
+
+In a **voice conversation session** — the recording session entered with the microphone button, or
+a dedicated voice-call session — the assistant's replies are read aloud. To keep spoken turns
+listenable, replies in that session are deliberately compressed into one or two very short
+sentences; they do not contain bullet lists and do not repeat what has already been said.
+
+This is **session-level behaviour, not a plugin bug**. If you are discussing something by typing
+(in the same session as a voice call, or while a voice session is active), this short-reply mode is
+not a good fit: start a new ordinary chat session, or turn voice mode off in the plugin before you
+continue the discussion.
+
+## Troubleshooting
+
+| Symptom | What to do |
 |---|---|
-| 点了没反应 | 检查麦克风权限，按钮上会显示原因 |
-| 识别为空 | 声音太小或太短；说话稍大声、多说几个字 |
-| 没念出来 | 这条是打字发的（设计如此），或语音模式已退出 |
-| 重复发言 | 别同时开两个 DSH 窗口的语音模式 |
+| Clicking the mic does nothing | Check microphone permission; the button shows the reason |
+| Empty transcription | Speak louder / a bit longer; check `stt-ok text=` in the log |
+| No spoken reply | The message was typed (by design), voice mode is off, or TTS failed |
+| Duplicate messages | Do not run voice mode in two DSH windows at the same time |
+| "Whisper update" status says unknown | The venv path or the model cache is not where the plugin expects; set the env vars above |
+| Update fails after installing `faster-whisper` | The bridge may not start; the log contains the pip/restart error and any rollback result |
 
-更细的原理、日志位置、已知限制见 [`docs/详细说明.md`](docs/详细说明.md)。
+Logs: `~/.dsh/voice-tutor.log` (rotated to `.log.1` at 2 MB). The last input mode is recorded in
+`~/.dsh/voice-tutor-last-input.json`. Detailed notes are in
+[`docs/detailed-guide.en.md`](docs/detailed-guide.en.md).
 
-## 更新记录
+## Changelog
+
+### 0.1.2
+
+- **New: local Whisper auto-update check.** Settings → Plugins → Voice Dialog now has an
+  "Auto-check local Whisper updates" switch (on by default), an interval (6/12/24/72 hours), a
+  "Check now" button, and a status block showing the installed/latest `faster-whisper` version and
+  the local/remote model revision. When an update exists, a small badge appears next to the
+  microphone; updates require a second confirmation and restart the ASR bridge safely.
+  New host routes: `GET /voice-tutor/whisper-update`, `POST /voice-tutor/whisper-update/check`,
+  `POST /voice-tutor/whisper-update/apply`.
+- **Includes all 0.1.1 startup fixes** (see below): client registration id matches the package name,
+  `dsh.client.inject` is empty, and paths / ffmpeg candidates are cross-platform. This release does
+  not regress any of them.
+- Documentation is now bilingual (English `README.md`, Chinese `README.zh-CN.md`, plus English and
+  Chinese detailed guides and install notes).
 
 ### 0.1.1
 
-启动修复版。**0.1.0 在任何平台装上都起不来**：整个 Web 前端的 boot 会失败
-（`web boot: 1 entry did not activate`），并常伴随 `duplicate factory registration`。
-原因是三处打包/启动问题：
+Startup fix. **0.1.0 could not start on any platform**: the whole web front-end failed to boot
+(`web boot: 1 entry did not activate`), often together with `duplicate factory registration`.
+Three packaging/boot problems were fixed:
 
-1. **客户端注册 id 与包名不一致**（`client.js`）：0.1.0 用 `@local/dsh-voice-chat` 注册，
-   而加载器按包名 `dsh-voice-dialog` 查找，于是报 `loaded without registering`。
-   0.1.1 把注册 id 改为 `dsh-voice-dialog`，与包名、`cordis.patch.yml` 三处保持一致。
-2. **注入了一个不存在的包**（`package.json` 的 `dsh.client.inject`）：
-   `@deepseek-ai/dsh-client-runtime` 在 DSH 0.2.x 里没有对应包，客户端入口 import 直接失败。
-   客户端实际只依赖加载器内建的 `react`，0.1.1 改为 `"inject": []`。
-3. **Windows 绝对路径写死**（`index.js`）：日志、上次输入、配置文件路径写成
-   `C:\Users\<用户名>\.dsh\...`，在 macOS/Linux 上会生成名字带反斜杠的怪文件、设置也写不进 `~/.dsh`。
-   0.1.1 统一用 `os.homedir()` + `path.join()` 得到 `~/.dsh/...`
-   （可用 `DSH_HOME` 或 `VOICE_TUTOR_LOG` / `VOICE_TUTOR_INPUT` / `VOICE_TUTOR_CONFIG` 覆盖）；
-   ffmpeg 候选改为按平台给：Windows 用 `%USERPROFILE%\tools\ffmpeg\bin\ffmpeg.exe` 和 PATH，
-   macOS/Linux 用 Homebrew / `/usr/local/bin` / `/usr/bin` / PATH，仍可用 `VOICE_TUTOR_FFMPEG` 指定。
+1. **Client registration id did not match the package name** (`client.js`): 0.1.0 registered
+   `@local/dsh-voice-chat` while the loader looked up `dsh-voice-dialog`, producing
+   `loaded without registering`. 0.1.1 registers `dsh-voice-dialog`, matching the package name and
+   `cordis.patch.yml`.
+2. **A non-existent package was injected** (`package.json` → `dsh.client.inject`):
+   `@deepseek-ai/dsh-client-runtime` does not exist in DSH 0.2.x, so the client entry import failed.
+   The client only needs the loader's built-in `react`; `inject` is now `[]`.
+3. **Windows absolute paths were hard-coded** (`index.js`): logs, last-input and config paths were
+   written as `C:\Users\<user>\.dsh\...`, which produced malformed filenames and unreadable settings
+   on macOS/Linux. 0.1.1 uses `os.homedir()` + `path.join()` (`DSH_HOME`, `VOICE_TUTOR_LOG`,
+   `VOICE_TUTOR_INPUT`, `VOICE_TUTOR_CONFIG` can override), and selects ffmpeg candidates per
+   platform (`%USERPROFILE%\tools\ffmpeg\bin\ffmpeg.exe` and PATH on Windows; Homebrew /
+   `/usr/local/bin` / `/usr/bin` / PATH elsewhere).
 
-顺带：朗读实现由 `msedge-tts` 改为用 `ws` 直连 Edge TTS（纯 JS 依赖，安装时不触发构建授权），
-功能不变；README 里新增本节与下方的兼容性说明。
+Also: speech output switched from `msedge-tts` to a direct Edge TTS WebSocket implementation using
+`ws` (pure JS, no install script), with identical behaviour.
 
 ### 0.1.0
 
-首个公开版本：连续语音对话、自动断句、2 秒确认窗口、外接 API、Edge TTS 朗读与打断。
+First public release: continuous voice conversation, automatic segmentation, 2-second confirmation
+window, external APIs, Edge TTS output and barge-in.
 
-## 兼容性说明
+## Compatibility
 
-- 需要 DSH 0.2.x；已在 0.2.2-rc.1 上验证（Windows 与 macOS 26.1 arm64）：启动无报错、麦克风按钮正常渲染。
-- 客户端只依赖加载器内建的 `react`，不需要注入任何运行时包（`dsh.client.inject` 为 `[]`）。
-- 宿主侧依赖 `ws`（纯 JS，无安装脚本）。
-- 识别默认用 DSH 自带 SenseVoice；朗读走进程内 Edge TTS WebSocket，不需要额外服务。
-- `ffmpeg` 只在收到非 WAV 音频时作为兜底转码，可以不装；路径与品牌无关，可用 `VOICE_TUTOR_FFMPEG` 覆盖。
-- 配置与日志都落在 `~/.dsh/`，多平台一致；删除该目录下的 `voice-tutor-config.json` 即可恢复默认设置。
+- Requires DSH 0.2.x; validated on 0.2.2-rc.1 (Windows and macOS 26.1 arm64).
+- The client only depends on the loader's built-in `react`; `dsh.client.inject` is `[]`.
+- The host depends on `ws` (pure JS, no install script).
+- Default recognition uses DSH's built-in SenseVoice; speech output uses in-process Edge TTS and
+  needs no extra service.
+- `ffmpeg` is only a fallback for non-WAV audio and is optional; override it with
+  `VOICE_TUTOR_FFMPEG`.
+- Config and logs live in `~/.dsh/`; delete `voice-tutor-config.json` there to reset settings.
 
+The local Whisper update checker assumes the bridge layout described above
+(`~/tools/fw/.venv` + `~/tools/asr-bridge/server.py`). Different layouts work by setting
+`VOICE_TUTOR_PY` and `VOICE_TUTOR_ASR_SERVER`.
+
+## License
+
+MIT. See [LICENSE](LICENSE).
+
+Upstream: <https://github.com/QiNFPV/dsh-voice-dialog>

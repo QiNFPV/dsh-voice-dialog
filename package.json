@@ -1,6 +1,6 @@
 {
   "name": "dsh-voice-dialog",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Continuous voice conversation for DeepSeek Harness: one mic toggle, automatic sentence splitting, a 2-second confirm window before sending, spoken replies with barge-in.",
   "type": "module",
   "icon": "icon.svg",
@@ -34,8 +34,12 @@
     "index.js",
     "client.js",
     "tts.mjs",
+    "whisper-update.mjs",
     "cordis.patch.yml",
     "README.md",
+    "README.zh-CN.md",
+    "安装说明.txt",
+    "install-notes.en.txt",
     "docs",
     "icon.svg",
     "LICENSE"

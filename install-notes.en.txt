@@ -1,0 +1,88 @@
+DSH Voice Dialog · v0.1.2 · Local installation notes
+====================================================
+
+Language: this is the English edition; the Chinese edition is 安装说明.txt.
+Version: 0.1.2 (includes every 0.1.1 startup fix and adds the local Whisper update check)
+
+What is in this release
+-----------------------
+- Continuous voice conversation: click the mic once, then just talk
+- Automatic segmentation, 2-second confirmation window, spoken replies, barge-in,
+  and a 10-second idle exit
+- New "local Whisper auto-update check": watches the faster-whisper package and the model
+  revision, shows a badge next to the voice button when updates exist, and can apply the
+  update from the settings page after confirmation
+- Includes all 0.1.1 startup fixes (0.1.0 broke the entire DSH web front-end on DSH 0.2.x):
+  1) client registration id now matches the package name (dsh-voice-dialog)
+  2) dsh.client.inject is empty (the client only needs the loader's built-in react)
+  3) paths use os.homedir() + path.join(); ffmpeg candidates are chosen per platform
+
+Requirements
+------------
+- DSH desktop 0.2.x, able to start normally
+- The default setup needs no Python, no ffmpeg and no extra service
+- Speech output uses Microsoft Edge TTS, so speech.platform.bing.com must be reachable
+- The local Whisper update check only applies to a local ASR bridge. Default assumptions:
+  - Python: %USERPROFILE%\tools\fw\.venv\Scripts\python.exe
+  - Bridge: %USERPROFILE%\tools\asr-bridge\server.py
+  - Port:   127.0.0.1:8789
+  Different layouts work by setting VOICE_TUTOR_PY / VOICE_TUTOR_ASR_SERVER.
+
+1. Install
+----------
+Option A (recommended, let DSH install it):
+  Put dsh-voice-dialog-0.1.2.tgz in a permanent location (not /tmp or %TEMP%), then use the DSH
+  plugin manager and choose "install from file".
+
+Option B (command line):
+  dsh plugin --profile desktop add /path/to/dsh-voice-dialog-0.1.2.tgz
+  Then add "dsh-voice-dialog" to the profile's dsh.profile.bundles and fully restart DSH.
+
+Manual copy:
+  Unpack the tgz into ~/.dsh/profiles/<profile>/node_modules/dsh-voice-dialog/ and restart DSH.
+  Do not copy node_modules from another machine.
+
+2. Usage
+--------
+1. Click the microphone to the left of the composer (it turns red when voice mode is on)
+2. Speak normally; about 1.2 s of silence ends the sentence
+3. Text appears in the composer and is sent after 2 seconds
+   - Press any key or click the composer during those 2 seconds to pause sending; press Enter when
+     you are done editing
+4. The reply is spoken; speak while it is playing to interrupt
+5. Voice mode exits after 10 seconds without speech
+
+3. Settings
+-----------
+Settings → Plugins → Voice Dialog
+  - Languages in the picker: which languages appear in the dropdown (Auto / Chinese / English /
+    Japanese by default)
+  - Auto-correct: fixes recognition errors (sentences with long digit strings are skipped)
+  - Local Whisper update check:
+      auto-check switch (on by default), interval (6/12/24/72 hours), Check now
+      status shows last check time, installed/latest faster-whisper versions, local/remote model
+      revisions and whether an update exists
+      "Update faster-whisper" / "Download new model" both require a second confirmation
+  - External APIs (optional): OpenAI-compatible recognition / synthesis endpoints and keys;
+    leave empty to use the built-in backends
+
+4. Voice session behaviour (please read)
+----------------------------------------
+In a voice conversation session (the recording session entered with the mic button, or a dedicated
+voice-call session) the assistant's replies are read aloud, so they are compressed into one or two
+very short sentences: no bullet lists and no restating.
+This is session-level behaviour, not a plugin bug. If you are discussing something by typing, start
+a new ordinary chat session, or leave voice mode before continuing the discussion.
+
+5. Logs and troubleshooting
+---------------------------
+- Log: ~/.dsh/voice-tutor.log
+- Config: ~/.dsh/voice-tutor-config.json
+- Last input mode: ~/.dsh/voice-tutor-last-input.json
+- Mic does nothing: check the log and microphone permissions
+- Empty transcription: too quiet or too short
+- No spoken reply: check access to Microsoft Edge TTS; recognition is unaffected
+- Whisper update fails: inspect wu-apply / pip / restart errors and the rollback result in the log;
+  the old model cache is never deleted
+
+Version 0.1.2 · MIT License · Upstream https://github.com/QiNFPV/dsh-voice-dialog
