@@ -10,14 +10,24 @@ import path from 'node:path';
 import { spawn } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
 
+const HOME = os.homedir();
+// 允许 DSH_HOME 覆盖；默认 ~/.dsh（Windows / macOS / Linux 都用 os.homedir() 展开）
+const DSH_DIR = process.env.DSH_HOME || path.join(HOME, '.dsh');
+
 // ffmpeg 只作为兼容兜底：新版客户端直接送 16k WAV，不需要它。
 function resolveFfmpeg() {
   if (process.env.VOICE_TUTOR_FFMPEG) return process.env.VOICE_TUTOR_FFMPEG;
-  const cands = [
-    'C:\\Users\\QiNPC\\tools\\ffmpeg\\bin\\ffmpeg.exe',
-    'ffmpeg.exe', 'ffmpeg',
-    '/usr/bin/ffmpeg', '/usr/local/bin/ffmpeg', '/opt/homebrew/bin/ffmpeg',
-  ];
+  const isWin = process.platform === 'win32';
+  // 只挑当前平台有意义的候选：Windows 用 exe，其它平台找 PATH / Homebrew 上的 ffmpeg
+  const cands = isWin
+    ? [
+      path.join(HOME, 'tools', 'ffmpeg', 'bin', 'ffmpeg.exe'),
+      'ffmpeg.exe', 'ffmpeg',
+    ]
+    : [
+      '/opt/homebrew/bin/ffmpeg', '/usr/local/bin/ffmpeg', '/usr/bin/ffmpeg',
+      'ffmpeg',
+    ];
   for (const c of cands) {
     try {
       if (c.includes('/') || c.includes('\\')) {
@@ -32,9 +42,9 @@ const TTS_BRIDGE = process.env.VOICE_TUTOR_TTS || 'http://127.0.0.1:8788/v1/audi
 const ASR_URL = process.env.VOICE_TUTOR_ASR || 'http://127.0.0.1:8789/v1/audio/transcriptions';
 const ASR_HEALTH = ASR_URL.replace(/\/v1\/audio\/transcriptions$/, '/health');
 
-const LOG = process.env.VOICE_TUTOR_LOG || 'C:\\Users\\QiNPC\\.dsh\\voice-tutor.log';
-const INPUT_FILE = process.env.VOICE_TUTOR_INPUT || 'C:\\Users\\QiNPC\\.dsh\\voice-tutor-last-input.json';
-const CONFIG_FILE = process.env.VOICE_TUTOR_CONFIG || 'C:\\Users\\QiNPC\\.dsh\\voice-tutor-config.json';
+const LOG = process.env.VOICE_TUTOR_LOG || path.join(DSH_DIR, 'voice-tutor.log');
+const INPUT_FILE = process.env.VOICE_TUTOR_INPUT || path.join(DSH_DIR, 'voice-tutor-last-input.json');
+const CONFIG_FILE = process.env.VOICE_TUTOR_CONFIG || path.join(DSH_DIR, 'voice-tutor-config.json');
 
 // 外接接口配置（OpenAI 兼容）。空 url 表示不用外接。
 const defaultConfig = () => ({
@@ -538,6 +548,34 @@ export function apply(ctx) {
         }
       }
       return json(res, 405, { error: 'GET or POST' });
+    }
+
+    if (p === '/voice-tutor/open') {
+      try {
+        const b = JSON.parse((await readBody(req, 8192)).toString('utf8') || '{}');
+        const url = String(b.url || '');
+        if (!/^https?:\/\//i.test(url)) return json(res, 400, { error: 'only http(s)' });
+        const { spawn } = await import('node:child_process');
+        if (process.platform === 'win32') {
+          // 指定用 Chrome 打开；找不到才退回系统默认浏览器
+          const chrome = [
+            'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
+            'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe',
+            path.join(HOME, 'AppData', 'Local', 'Google', 'Chrome', 'Application', 'chrome.exe'),
+            '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
+          ].find((p2) => existsSync(p2));
+          if (chrome) spawn(chrome, [url], { detached: true, stdio: 'ignore' }).unref();
+          else spawn('cmd', ['/c', 'start', '""', url], { detached: true, stdio: 'ignore', windowsVerbatimArguments: true }).unref();
+          log('open-url', (chrome ? 'chrome ' : 'default ') + url.slice(0, 60));
+        } else if (process.platform === 'darwin') {
+          spawn('open', ['-a', 'Google Chrome', url], { detached: true, stdio: 'ignore' }).unref();
+        } else {
+          spawn('xdg-open', [url], { detached: true, stdio: 'ignore' }).unref();
+        }
+        return json(res, 200, { ok: true });
+      } catch (e) {
+        return json(res, 500, { error: String(e && e.message || e) });
+      }
     }
 
     if (p === '/voice-tutor/voices') {

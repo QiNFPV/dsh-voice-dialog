@@ -1,6 +1,6 @@
 {
   "name": "dsh-voice-dialog",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Continuous voice conversation for DeepSeek Harness: one mic toggle, automatic sentence splitting, a 2-second confirm window before sending, spoken replies with barge-in.",
   "type": "module",
   "icon": "icon.svg",
@@ -21,9 +21,7 @@
     "client": {
       "platform": "web",
       "immediately": true,
-      "inject": [
-        "@deepseek-ai/dsh-client-runtime"
-      ]
+      "inject": []
     }
   },
   "exports": {
@@ -55,6 +53,6 @@
     "node": ">=20"
   },
   "dependencies": {
-    "msedge-tts": "^2.1.1"
+    "ws": "^8.22.2"
   }
 }

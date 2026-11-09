@@ -49,3 +49,41 @@
 | 重复发言 | 别同时开两个 DSH 窗口的语音模式 |
 
 更细的原理、日志位置、已知限制见 [`docs/详细说明.md`](docs/详细说明.md)。
+
+## 更新记录
+
+### 0.1.1
+
+启动修复版。**0.1.0 在任何平台装上都起不来**：整个 Web 前端的 boot 会失败
+（`web boot: 1 entry did not activate`），并常伴随 `duplicate factory registration`。
+原因是三处打包/启动问题：
+
+1. **客户端注册 id 与包名不一致**（`client.js`）：0.1.0 用 `@local/dsh-voice-chat` 注册，
+   而加载器按包名 `dsh-voice-dialog` 查找，于是报 `loaded without registering`。
+   0.1.1 把注册 id 改为 `dsh-voice-dialog`，与包名、`cordis.patch.yml` 三处保持一致。
+2. **注入了一个不存在的包**（`package.json` 的 `dsh.client.inject`）：
+   `@deepseek-ai/dsh-client-runtime` 在 DSH 0.2.x 里没有对应包，客户端入口 import 直接失败。
+   客户端实际只依赖加载器内建的 `react`，0.1.1 改为 `"inject": []`。
+3. **Windows 绝对路径写死**（`index.js`）：日志、上次输入、配置文件路径写成
+   `C:\Users\<用户名>\.dsh\...`，在 macOS/Linux 上会生成名字带反斜杠的怪文件、设置也写不进 `~/.dsh`。
+   0.1.1 统一用 `os.homedir()` + `path.join()` 得到 `~/.dsh/...`
+   （可用 `DSH_HOME` 或 `VOICE_TUTOR_LOG` / `VOICE_TUTOR_INPUT` / `VOICE_TUTOR_CONFIG` 覆盖）；
+   ffmpeg 候选改为按平台给：Windows 用 `%USERPROFILE%\tools\ffmpeg\bin\ffmpeg.exe` 和 PATH，
+   macOS/Linux 用 Homebrew / `/usr/local/bin` / `/usr/bin` / PATH，仍可用 `VOICE_TUTOR_FFMPEG` 指定。
+
+顺带：朗读实现由 `msedge-tts` 改为用 `ws` 直连 Edge TTS（纯 JS 依赖，安装时不触发构建授权），
+功能不变；README 里新增本节与下方的兼容性说明。
+
+### 0.1.0
+
+首个公开版本：连续语音对话、自动断句、2 秒确认窗口、外接 API、Edge TTS 朗读与打断。
+
+## 兼容性说明
+
+- 需要 DSH 0.2.x；已在 0.2.2-rc.1 上验证（Windows 与 macOS 26.1 arm64）：启动无报错、麦克风按钮正常渲染。
+- 客户端只依赖加载器内建的 `react`，不需要注入任何运行时包（`dsh.client.inject` 为 `[]`）。
+- 宿主侧依赖 `ws`（纯 JS，无安装脚本）。
+- 识别默认用 DSH 自带 SenseVoice；朗读走进程内 Edge TTS WebSocket，不需要额外服务。
+- `ffmpeg` 只在收到非 WAV 音频时作为兜底转码，可以不装；路径与品牌无关，可用 `VOICE_TUTOR_FFMPEG` 覆盖。
+- 配置与日志都落在 `~/.dsh/`，多平台一致；删除该目录下的 `voice-tutor-config.json` 即可恢复默认设置。
+

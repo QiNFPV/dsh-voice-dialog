@@ -2,7 +2,7 @@
 // 一个状态机：off → listening → thinking → speaking → listening
 // 规则只有三条：听的时候不播、播的时候不听、发完就回去听。
 window.__ModuleLoader__.load({
-  id: '@local/dsh-voice-chat',
+  id: 'dsh-voice-dialog',
   factory(require) {
     const React = require('react');
     const h = React.createElement;
