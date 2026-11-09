@@ -22,6 +22,8 @@ assistant's reply is spoken back. Start talking while it is speaking and it stop
 - **Barge-in** — start speaking while the reply is playing and playback stops immediately
 - **Idle exit** — leaves voice mode after 10 s without speech, so the microphone is not held open
 - **Only voice-triggered replies are spoken** — messages you type stay silent
+- **Stutter collapse** — repeated syllables from speaking hesitantly (来来来来) are collapsed before sending
+- **Robust short utterances** — very short replies (嗯 / 对 / 好的) are recognised in the right language instead of being dropped or turned into English
 - **UI language follows DSH** — the plugin's buttons and settings text switch between Chinese and English together with the host UI language
 - **Local Whisper update check** — optional; watches `faster-whisper` and the local model for new
   versions and lets you update them from the settings page
@@ -82,6 +84,8 @@ Recognition always detects the language automatically.
 - **Auto-correct recognition** — fix obvious errors; sentences with long digit strings are skipped
 - **External APIs (optional)** — OpenAI-compatible speech-to-text / text-to-speech endpoints and
   keys; leave empty to use the built-in backends
+- **Stutter collapse** — repeated syllables from speaking hesitantly (来来来来) are collapsed before sending
+- **Robust short utterances** — very short replies (嗯 / 对 / 好的) are recognised in the right language instead of being dropped or turned into English
 - **UI language follows DSH** — the plugin's buttons and settings text switch between Chinese and English together with the host UI language
 - **Local Whisper update check** — see below
 
