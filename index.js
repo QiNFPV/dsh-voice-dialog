@@ -770,8 +770,8 @@ export function apply(ctx) {
             path.join(HOME, 'AppData', 'Local', 'Google', 'Chrome', 'Application', 'chrome.exe'),
             '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
           ].find((p2) => existsSync(p2));
-          if (chrome) spawn(chrome, [url], { detached: true, stdio: 'ignore' }).unref();
-          else spawn('cmd', ['/c', 'start', '""', url], { detached: true, stdio: 'ignore', windowsVerbatimArguments: true }).unref();
+          if (chrome) spawn(chrome, [url], { detached: true, stdio: 'ignore', windowsHide: true }).unref();
+          else spawn('cmd', ['/c', 'start', '""', url], { detached: true, stdio: 'ignore', windowsVerbatimArguments: true, windowsHide: true }).unref();
           log('open-url', (chrome ? 'chrome ' : 'default ') + url.slice(0, 60));
         } else if (process.platform === 'darwin') {
           spawn('open', ['-a', 'Google Chrome', url], { detached: true, stdio: 'ignore' }).unref();
