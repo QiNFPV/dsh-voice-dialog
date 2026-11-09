@@ -156,13 +156,14 @@ async function whisperAvailable() {
   return asrOk;
 }
 
-async function transcribeWhisper(wav, lang) {
+async function transcribeWhisper(wav, lang, candidates) {
   const r = await fetch(ASR_URL, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       audio: wav.toString('base64'),
       language: lang && lang !== 'auto' ? lang : undefined,
+      candidates: lang && lang !== 'auto' ? undefined : (candidates && candidates.length ? candidates.join(',') : undefined),
     }),
     signal: AbortSignal.timeout(180000),
   });
@@ -184,11 +185,17 @@ const HALLUCINATIONS = new Set([
   '字幕由amara.org社区提供', 'ご視聴ありがとうございました', 'チャンネル登録',
 ]);
 
+// 这些单字是正常回答，不能当幻觉丢掉（中文里“对 / 行 / 嗯”很常见；
+// 繁体写法也一并放行，Whisper 的日语/中文解码偶尔会吐繁体）
+const SINGLE_OK = new Set([
+  '对', '對', '行', '是', '嗯', '哦', '好', '要', '能', '走', '停', '来', '來', '给', '給', '中',
+]);
+
 // Whisper 在静音/噪声上会凭空造词，这些整句丢掉
 function looksHallucinated(text) {
   const t = String(text || '').trim().toLowerCase().replace(/[.,!?。，！？\s]/g, '');
   if (!t) return true;
-  if (t.length <= 1) return true;
+  if (t.length <= 1) return !SINGLE_OK.has(t);
   return HALLUCINATIONS.has(t);
 }
 
@@ -586,6 +593,8 @@ export function apply(ctx) {
           return json(res, 409, { error: 'legacy-client', text: '' });
         }
         const b64 = String(body.audio || '').replace(/^data:[^,]*,/, '');
+        // 客户端勾选的语种：短句自动识别跑偏时，用它做候选对照
+        const candLangs = Array.isArray(body.langs) ? body.langs.filter((x) => typeof x === 'string').slice(0, 6) : [];
         if (!b64) return json(res, 400, { error: 'missing audio' });
         if (body.sessionId) {
           armedSession = String(body.sessionId);
@@ -622,7 +631,7 @@ export function apply(ctx) {
         }
         if (!text && await whisperAvailable()) {
           try {
-            const w = await transcribeWhisper(wav, sttLang);
+            const w = await transcribeWhisper(wav, sttLang, candLangs);
             text = String(w.text || '').trim();
             langUsed = w.language || sttLang;
             engine = 'whisper';

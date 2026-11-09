@@ -637,7 +637,7 @@ window.__ModuleLoader__.load({
         const r = await fetch('/voice-tutor/stt', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ v: 3, audio: b64, sessionId: (E.props || {}).sessionId, lang: E.voice }),
+          body: JSON.stringify({ v: 3, audio: b64, sessionId: (E.props || {}).sessionId, lang: E.voice, langs: getLangs() }),
         });
         const d = await r.json();
         if (!r.ok) throw new Error(d.error || ('HTTP ' + r.status));
