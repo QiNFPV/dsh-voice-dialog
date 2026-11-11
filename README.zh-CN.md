@@ -30,6 +30,15 @@ DeepSeek Harness 的**连续语音对话**插件：点一下麦克风，之后�
 - 朗读使用微软 Edge TTS，需要能访问 `speech.platform.bing.com`
 - 可选：本机跑一个 Whisper 桥（`faster-whisper`），识别更准
 
+## 安全说明
+
+- 每个 /voice-tutor/* 路由都会先向 DSH 的 connection 服务要一次准入（equestRejection，与 DSH 自带路由同一道围栏）：跨站调用和 DNS 重绑定在任何处理逻辑之前就被拒掉，只有已登录的 DSH 会话能访问。
+- API Key 只写不读：GET /voice-tutor/config 只回「是否已设置」，不回原文；设置页里可以显式清除。
+- 外接接口只接受 http(s) 地址，保存非 http 的 URL 会被拒绝。
+- 执行 Whisper / 模型更新，除了界面二次确认，还要求同会话下发的一次性 token（90 秒有效、只能用一次）。
+- 设置（含 API Key）以明文存放在 ~/.dsh/voice-tutor-config.json，只有文件权限这一层保护；建议用可随时吊销的 key。
+- 回复朗读走微软 Edge 浏览器的在线朗读端点（speech.platform.bing.com），回复文字会发给微软；它不是面向第三方的正式 API，端点和令牌变动时会失效。
+
 ## 安装
 
 ### 用发布包安装

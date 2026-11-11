@@ -35,6 +35,15 @@ assistant's reply is spoken back. Start talking while it is speaking and it stop
 - Speech output uses Microsoft Edge TTS, so `speech.platform.bing.com` must be reachable
 - Optional: a local Whisper bridge (`faster-whisper`) for better recognition accuracy
 
+## Security
+
+- Every /voice-tutor/* route asks the DSH connection service for admission first (equestRejection, same fence as DSH's own routes): cross-site calls and DNS rebinding are rejected before any handler runs, and only the authenticated DSH session gets through.
+- API keys are write-only: GET /voice-tutor/config only reports whether a key is set, never its value. Keys are cleared explicitly from the settings page.
+- External endpoints must be http(s); saving a non-http URL is refused.
+- Applying a Whisper / model update requires a one-time token issued to the same session (valid for 90 seconds, single use) on top of the confirmation dialog.
+- Settings — including any API key — are stored in plain text at ~/.dsh/voice-tutor-config.json; file permissions are the only protection. Prefer a key you can revoke.
+- Reply speech is synthesised through Microsoft Edge's online reading endpoint (speech.platform.bing.com), so reply text is sent to Microsoft. This is not a formal third-party API; if the endpoint or its token changes, speech output stops working.
+
 ## Install
 
 ### From the release package

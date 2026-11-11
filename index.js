@@ -81,6 +81,45 @@ const defaultConfig = () => ({
   },
 });
 let config = defaultConfig();
+
+// 回给前端时绝不带密钥原文：只告诉“是否已设置”
+function publicConfig(c) {
+  const cfg = c || defaultConfig();
+  return {
+    asr: { url: cfg.asr.url || '', model: cfg.asr.model || '', keySet: !!cfg.asr.key },
+    tts: {
+      url: cfg.tts.url || '', model: cfg.tts.model || '', voice: cfg.tts.voice || '',
+      keySet: !!cfg.tts.key,
+    },
+    whisperUpdate: cfg.whisperUpdate,
+  };
+}
+
+// 合并外接接口设置：没传 key 就保留原值，clearKey 才清空
+const mergeEndpoint = (next, prev) => {
+  const out = { ...prev };
+  for (const k of ['url', 'model', 'voice']) {
+    if (next && next[k] !== undefined) out[k] = String(next[k] || '').trim();
+  }
+  if (next && next.clearKey) out.key = '';
+  else if (next && typeof next.key === 'string' && next.key.trim()) out.key = next.key.trim();
+  return out;
+};
+const isHttpUrl = (u) => !u || /^https?:\/\//i.test(String(u));
+
+// 更新动作的二次确认：GET 时发一个短时 token，apply 必须带上（且只能用一次）
+let applyToken = '';
+let applyTokenAt = 0;
+const issueApplyToken = () => {
+  applyToken = randomUUID().replace(/-/g, '');
+  applyTokenAt = Date.now();
+  return applyToken;
+};
+const takeApplyToken = (t) => {
+  const ok = !!t && t === applyToken && Date.now() - applyTokenAt < 90000;
+  if (ok) { applyToken = ''; applyTokenAt = 0; }
+  return ok;
+};
 const log = (...args) => {
   const line = new Date().toISOString() + ' ' + args.map(String).join(' ') + '\n';
   fs.appendFile(LOG, line).catch(() => {});
@@ -322,11 +361,12 @@ function dominantLang(t) {
   return 'auto';
 }
 
-export const inject = ['webServer', 'llm'];
+export const inject = ['webServer', 'llm', 'connection'];
 
 export function apply(ctx) {
   const web = ctx.get('webServer');
   const speech = ctx.get('speechToText');
+  const connection = ctx.get('connection');
   llmService = ctx.get('llm') || null;
   if (!web) { loadConfig().catch(() => {}); return; }
 
@@ -576,6 +616,24 @@ export function apply(ctx) {
   });
 
   const handler = async (req, res) => {
+    // 准入校验：web.register 的 prefix 路由本身不过 Connection 的 Host/Origin 围栏，
+    // 这里逐请求问一次 connection，挡住跨站调用与 DNS 重绑定。拿不到服务就失败关闭。
+    const rejection = (() => {
+      try {
+        return connection && typeof connection.requestRejection === 'function'
+          ? connection.requestRejection(req)
+          : 503;
+      } catch {
+        return 503;
+      }
+    })();
+    if (rejection !== undefined) {
+      log('route-rejected', rejection, req.method, req.url);
+      res.statusCode = rejection;
+      res.end();
+      return;
+    }
+
     const url = new URL(req.url || '/', 'http://127.0.0.1');
     const p = url.pathname;
 
@@ -709,7 +767,7 @@ export function apply(ctx) {
     }
 
     if (p === '/voice-tutor/config') {
-      if (req.method === 'GET') return json(res, 200, config);
+      if (req.method === 'GET') return json(res, 200, publicConfig(config));
       if (req.method === 'POST') {
         try {
           const b = JSON.parse((await readBody(req, 65536)).toString('utf8') || '{}');
@@ -719,12 +777,14 @@ export function apply(ctx) {
               return json(res, 400, { error: '检查间隔必须是 1-168 小时' });
             }
           }
+          if (b.asr && !isHttpUrl(b.asr.url)) return json(res, 400, { error: '识别接口只支持 http(s)' });
+          if (b.tts && !isHttpUrl(b.tts.url)) return json(res, 400, { error: '合成接口只支持 http(s)' });
           // 只覆盖本次提交的字段，别把已有的外接接口或上次检查结果清空
           const d = defaultConfig();
           const base = config || d;
           config = {
-            asr: { ...d.asr, ...(base.asr || {}), ...(b.asr || {}) },
-            tts: { ...d.tts, ...(base.tts || {}), ...(b.tts || {}) },
+            asr: mergeEndpoint(b.asr, { ...d.asr, ...(base.asr || {}) }),
+            tts: mergeEndpoint(b.tts, { ...d.tts, ...(base.tts || {}) }),
             whisperUpdate: { ...d.whisperUpdate, ...(base.whisperUpdate || {}), ...(b.whisperUpdate || {}) },
           };
           await saveConfig();
@@ -733,7 +793,7 @@ export function apply(ctx) {
           if (b.whisperUpdate) {
             scheduleWhisperWatch(config.whisperUpdate.lastResult ? wuIntervalMs() : 2000);
           }
-          return json(res, 200, { ok: true, config });
+          return json(res, 200, { ok: true, config: publicConfig(config) });
         } catch (e) {
           return json(res, 400, { error: String(e && e.message || e) });
         }
@@ -743,7 +803,7 @@ export function apply(ctx) {
 
     if (p === '/voice-tutor/whisper-update') {
       if (req.method !== 'GET') return json(res, 405, { error: 'GET only' });
-      return json(res, 200, { ok: true, ...whisperStatus() });
+      return json(res, 200, { ok: true, ...whisperStatus(), applyToken: issueApplyToken() });
     }
 
     if (p === '/voice-tutor/whisper-update/check') {
@@ -756,7 +816,9 @@ export function apply(ctx) {
       if (req.method !== 'POST') return json(res, 405, { error: 'POST only' });
       try {
         const b = JSON.parse((await readBody(req, 65536)).toString('utf8') || '{}');
-        if (b.confirm !== true) return json(res, 400, { error: '需要二次确认（confirm: true）' });
+        if (b.confirm !== true || !takeApplyToken(String(b.token || ''))) {
+          return json(res, 400, { error: '需要二次确认（重新打开面板获取 token）' });
+        }
         const target = String(b.target || '');
         if (target !== 'fastwhisper' && target !== 'model') {
           return json(res, 400, { error: 'target 只能是 fastwhisper 或 model' });

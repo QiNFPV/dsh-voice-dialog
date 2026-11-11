@@ -90,6 +90,9 @@ window.__ModuleLoader__.load({
         extAsr: '识别',
         extTtsHint: '合成接口：POST {url}，JSON {model, input, voice}，例如 /v1/audio/speech',
         extTts: '合成',
+        keySaved: '已保存（留空不改）',
+        keyWillClear: '保存时清除',
+        keyClear: '清除密钥',
         phModel: '模型',
         phVoice: '音色',
         extSaveHint: '留空则用内置 Edge TTS 与本地识别',
@@ -167,6 +170,9 @@ window.__ModuleLoader__.load({
         extAsr: 'STT',
         extTtsHint: 'Text-to-speech: POST {url}, JSON {model, input, voice}, e.g. /v1/audio/speech',
         extTts: 'TTS',
+        keySaved: 'Saved — leave blank to keep',
+        keyWillClear: 'Will be cleared on save',
+        keyClear: 'Clear key',
         phModel: 'model',
         phVoice: 'voice',
         extSaveHint: 'Leave empty to use the built-in Edge TTS and local speech recognition',
@@ -385,10 +391,13 @@ window.__ModuleLoader__.load({
         if (!ok) return;
       }
       try {
+        // 二次确认 token：每次 apply 前现取一个（90 秒内有效、只能用一次）
+        const tk = await fetch('/voice-tutor/whisper-update', { cache: 'no-store' })
+          .then((r) => r.json()).catch(() => ({}));
         const resp = await fetch('/voice-tutor/whisper-update/apply', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ target, confirm: true }),
+          body: JSON.stringify({ target, confirm: true, token: (tk && tk.applyToken) || '' }),
         });
         const d = await resp.json().catch(() => ({}));
         if (!resp.ok) throw new Error(d.error || ('HTTP ' + resp.status));
@@ -941,6 +950,12 @@ window.__ModuleLoader__.load({
           const r = await fetch('/voice-tutor/config', {
             method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(cfg),
           });
+          if (r.ok) {
+            // 服务端不回密钥，保存后重新拉一次，让“已设置/已清除”状态对齐
+            const d = await fetch('/voice-tutor/config', { cache: 'no-store' })
+              .then((x) => x.json()).catch(() => null);
+            if (d) setCfg({ asr: d.asr || {}, tts: d.tts || {} });
+          }
           setMsg(r.ok ? t('saved') : t('saveFailed'));
         } catch { setMsg(t('saveFailed')); }
         setTimeout(() => setMsg(''), 2500);
@@ -952,19 +967,42 @@ window.__ModuleLoader__.load({
       };
       const line = { display: 'flex', alignItems: 'center', gap: 8, fontSize: 12 };
       const hint = { fontSize: 11, opacity: .5, lineHeight: '16px' };
+      // 密钥只显示「是否已设置」，绝不回显原文；留空 = 保持原值
+      const keyInput = (g) => {
+        const e = cfg[g] || {};
+        const placeholder = e.clearKey ? t('keyWillClear') : (e.keySet ? t('keySaved') : 'API Key');
+        return h('input', {
+          style: inp, placeholder, type: 'password', value: e.key || '',
+          onChange: (ev) => set(g, 'key', ev.target.value),
+        });
+      };
+      const keyClearBtn = (g) => {
+        const e = cfg[g] || {};
+        if (!e.keySet) return null;
+        return h('button', {
+          type: 'button',
+          style: {
+            height: 28, padding: '0 8px', borderRadius: 6, cursor: 'pointer', fontSize: 12,
+            border: '1px solid var(--dsw-alias-border-l2,#444)', background: 'transparent', color: 'inherit',
+          },
+          onClick: () => setCfg({ ...cfg, [g]: { ...(cfg[g] || {}), keySet: false, clearKey: true, key: '' } }),
+        }, t('keyClear'));
+      };
       return h('div', { style: { display: 'flex', flexDirection: 'column', gap: 10, marginTop: 6 } },
         h('div', { style: { fontSize: 13, opacity: .85 } }, t('extTitle')),
         h('div', { style: hint }, t('extAsrHint')),
         h('div', { style: line },
           h('span', { style: { width: 46, opacity: .7 } }, t('extAsr')),
           h('input', { style: inp, placeholder: 'URL', value: (cfg.asr || {}).url || '', onChange: (e) => set('asr', 'url', e.target.value) }),
-          h('input', { style: inp, placeholder: 'API Key', type: 'password', value: (cfg.asr || {}).key || '', onChange: (e) => set('asr', 'key', e.target.value) }),
+          keyInput('asr'),
+          keyClearBtn('asr'),
           h('input', { style: { ...inp, maxWidth: 150 }, placeholder: t('phModel'), value: (cfg.asr || {}).model || '', onChange: (e) => set('asr', 'model', e.target.value) })),
         h('div', { style: hint }, t('extTtsHint')),
         h('div', { style: line },
           h('span', { style: { width: 46, opacity: .7 } }, t('extTts')),
           h('input', { style: inp, placeholder: 'URL', value: (cfg.tts || {}).url || '', onChange: (e) => set('tts', 'url', e.target.value) }),
-          h('input', { style: inp, placeholder: 'API Key', type: 'password', value: (cfg.tts || {}).key || '', onChange: (e) => set('tts', 'key', e.target.value) }),
+          keyInput('tts'),
+          keyClearBtn('tts'),
           h('input', { style: { ...inp, maxWidth: 120 }, placeholder: t('phModel'), value: (cfg.tts || {}).model || '', onChange: (e) => set('tts', 'model', e.target.value) }),
           h('input', { style: { ...inp, maxWidth: 110 }, placeholder: t('phVoice'), value: (cfg.tts || {}).voice || '', onChange: (e) => set('tts', 'voice', e.target.value) })),
         h('div', { style: { ...line, gap: 10 } },
@@ -1068,9 +1106,11 @@ window.__ModuleLoader__.load({
         if (!ok) return;
         setBusy(true);
         try {
+          // 二次确认 token：现取一个再提交（90 秒内有效、只能用一次）
+          const tk = await getJson('/voice-tutor/whisper-update', { cache: 'no-store' }).catch(() => ({}));
           await getJson('/voice-tutor/whisper-update/apply', {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ target, confirm: true }),
+            body: JSON.stringify({ target, confirm: true, token: (tk && tk.applyToken) || '' }),
           });
           setMsg(t('updateStarted'));
           load();
