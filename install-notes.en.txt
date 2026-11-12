@@ -1,8 +1,8 @@
-DSH Voice Dialog · v0.1.3 · Local installation notes
+DSH Voice Dialog · v0.1.4 · Local installation notes
 ====================================================
 
 Language: this is the English edition; the Chinese edition is 安装说明.txt.
-Version: 0.1.3 (includes every 0.1.1 / 0.1.2 fix, and adds the bilingual UI and the console-window fix)
+Version: 0.1.4 (adds per-request route admission, write-only API keys and a single-use update token on top of 0.1.3)
 
 What is in this release
 -----------------------
@@ -31,11 +31,11 @@ Requirements
 1. Install
 ----------
 Option A (recommended, let DSH install it):
-  Put dsh-voice-dialog-0.1.3.tgz in a permanent location (not /tmp or %TEMP%), then use the DSH
+  Put dsh-voice-dialog-0.1.4.tgz in a permanent location (not /tmp or %TEMP%), then use the DSH
   plugin manager and choose "install from file".
 
 Option B (command line):
-  dsh plugin --profile desktop add /path/to/dsh-voice-dialog-0.1.3.tgz
+  dsh plugin --profile desktop add /path/to/dsh-voice-dialog-0.1.4.tgz
   Then add "dsh-voice-dialog" to the profile's dsh.profile.bundles and fully restart DSH.
 
 Manual copy:
@@ -85,4 +85,4 @@ a new ordinary chat session, or leave voice mode before continuing the discussio
 - Whisper update fails: inspect wu-apply / pip / restart errors and the rollback result in the log;
   the old model cache is never deleted
 
-Version 0.1.3 · MIT License · Upstream https://github.com/QiNFPV/dsh-voice-dialog
+Version 0.1.4 · MIT License · Upstream https://github.com/QiNFPV/dsh-voice-dialog

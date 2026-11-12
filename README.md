@@ -48,7 +48,7 @@ assistant's reply is spoken back. Start talking while it is speaking and it stop
 
 ### From the release package
 
-1. Download `dsh-voice-dialog-0.1.3.tgz` from
+1. Download `dsh-voice-dialog-0.1.4.tgz` from
    [Releases](https://github.com/QiNFPV/dsh-voice-dialog/releases).
 2. Put the file somewhere permanent (not `/tmp` or `%TEMP%`), then install it with the DSH plugin
    manager (`Settings → Plugins → Install from file`).
@@ -57,7 +57,7 @@ assistant's reply is spoken back. Start talking while it is speaking and it stop
 Command line equivalent:
 
 ```bash
-dsh plugin --profile desktop add /path/to/dsh-voice-dialog-0.1.3.tgz
+dsh plugin --profile desktop add /path/to/dsh-voice-dialog-0.1.4.tgz
 ```
 
 Then add `dsh-voice-dialog` to `dsh.profile.bundles` in the profile and restart DSH.
@@ -184,6 +184,21 @@ Logs: `~/.dsh/voice-tutor.log` (rotated to `.log.1` at 2 MB). The last input mod
 [`docs/detailed-guide.en.md`](docs/detailed-guide.en.md).
 
 ## Changelog
+
+### 0.1.4
+
+- **Security: every /voice-tutor/* route now checks admission first.** Each request asks the DSH
+  connection service for a rejection (equestRejection): the Host/Origin fence and the logged-in
+  session are enforced before any handler runs, and the plugin fails closed (503) if the service is
+  unavailable. Cross-site calls and DNS rebinding no longer reach config, STT, TTS or the update job.
+- **API keys are write-only.** GET /voice-tutor/config returns keySet flags instead of key values;
+  saving with an empty key keeps the stored one, and the settings page has an explicit *Clear key*
+  button. External endpoint URLs are restricted to http(s).
+- **Update confirmation is single-use.** GET /voice-tutor/whisper-update issues a token valid for
+  90 seconds and one pply call; POST /voice-tutor/whisper-update/apply requires it on top of
+  confirm: true. A bare confirm can no longer run pip install and restart the bridge.
+- A **Security** section above documents the trust model, the plaintext settings file, and the Edge
+  TTS disclosure.
 
 ### 0.1.3
 

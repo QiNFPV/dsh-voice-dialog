@@ -44,7 +44,7 @@ DeepSeek Harness 的**连续语音对话**插件：点一下麦克风，之后�
 ### 用发布包安装
 
 1. 从 [Releases](https://github.com/QiNFPV/dsh-voice-dialog/releases) 下载
-   `dsh-voice-dialog-0.1.3.tgz`。
+   `dsh-voice-dialog-0.1.4.tgz`。
 2. 把文件放到一个固定位置（不要放 `/tmp` 或 `%TEMP%`），然后用 DSH 的插件管理器安装
    （设置 → 插件 → 从文件安装）。
 3. 确认 profile 的 bundle 列表里有 `dsh-voice-dialog`，然后完全退出 DSH 再打开。
@@ -52,7 +52,7 @@ DeepSeek Harness 的**连续语音对话**插件：点一下麦克风，之后�
 等价的命令行方式：
 
 ```bash
-dsh plugin --profile desktop add /path/to/dsh-voice-dialog-0.1.3.tgz
+dsh plugin --profile desktop add /path/to/dsh-voice-dialog-0.1.4.tgz
 ```
 
 然后把 `dsh-voice-dialog` 加入 profile 的 `dsh.profile.bundles`，重启 DSH。
@@ -163,6 +163,18 @@ dsh plugin --profile desktop add /path/to/dsh-voice-dialog-0.1.3.tgz
 [`docs/详细说明.md`](docs/详细说明.md)。
 
 ## 更新记录
+
+### 0.1.4
+
+- **安全：/voice-tutor/* 每个路由都先做准入校验。** 每个请求先向 DSH 的 connection 服务要一次
+  equestRejection：Host/Origin 围栏和登录态在任何处理逻辑之前生效，拿不到该服务时失败关闭（503）。
+  跨站调用与 DNS 重绑定再也碰不到配置、识别、合成和更新任务。
+- **API Key 只写不读。** GET /voice-tutor/config 回 keySet 标志而不是 key 原文；留空保存保持原值，
+  设置页新增显式的「清除密钥」按钮；外接接口只接受 http(s) 地址。
+- **更新确认一次性化。** GET /voice-tutor/whisper-update 下发 90 秒、单次使用的 token，
+  POST /voice-tutor/whisper-update/apply 除了 confirm: true 必须带它；光带 confirm 不再能执行
+  pip install 并重启桥。
+- 上面新增的**安全说明**一节写清了信任模型、明文配置文件与 Edge TTS 的披露。
 
 ### 0.1.3
 
